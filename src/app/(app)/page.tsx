@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     { label: "Proyectos activos", value: byStatus("activo"), href: "/proyectos?status=activo" },
     { label: "En desarrollo", value: byStatus("en_desarrollo"), href: "/proyectos?status=en_desarrollo" },
     { label: "Clientes", value: clients.count ?? 0, href: "/clientes" },
-    { label: "Alertas pendientes", value: alerts.count ?? 0, href: "/proyectos" },
+    { label: "Alertas pendientes", value: alerts.count ?? 0, href: "/alertas" },
   ];
 
   return (
