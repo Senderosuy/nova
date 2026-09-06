@@ -19,6 +19,8 @@ export type Schedule = {
   concept: string;
   amount: number | null;
   currency: string;
+  net_cost: number | null;
+  net_currency: string;
   frequency: string;
   confirmation_status: string;
   billing_status: string;
@@ -86,10 +88,19 @@ export function RevenuePanel({
             <li key={s.service_id} className="border-b border-line px-5 py-4 last:border-0">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="font-medium">
-                    {s.concept}{" "}
+                  <p className="font-medium">{s.concept}</p>
+                  <p className="mt-0.5 text-sm">
                     <span className="text-accent">{money(s.amount, s.currency)}</span>
-                    <span className="text-xs text-muted"> / {s.frequency}</span>
+                    <span className="text-xs text-muted"> al cliente / {s.frequency}</span>
+                    {s.net_cost !== null && Number(s.net_cost) > 0 && (
+                      <>
+                        <span className="mx-2 text-muted">·</span>
+                        <span className="text-cream">
+                          {money(s.net_cost, s.net_currency)}
+                        </span>
+                        <span className="text-xs text-muted"> costo neto</span>
+                      </>
+                    )}
                   </p>
                   <p className="mt-1 text-xs text-muted">
                     {s.anchor_asset
@@ -99,7 +110,7 @@ export function RevenuePanel({
                       ? ` · primer cobro ${s.effective_first_charge}`
                       : ""}
                   </p>
-                  {s.confirm_by && (
+                  {s.confirm_by && (s.frequency === "anual" || s.frequency === "semestral") && (
                     <p className="mt-1 text-xs">
                       <span className={
                         (s.days_to_confirm ?? 99) <= 15 ? "text-violet" : "text-muted"
