@@ -1,10 +1,10 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getConnector, hasCredential } from "@/lib/connectors";
-import { createProvider, updateProvider, syncProvider } from "./actions";
+import { createProvider, updateProvider, syncProvider, archiveProvider } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 import { SearchInput } from "@/components/search-input";
 import { matches } from "@/lib/search";
-import { SubmitButton } from "@/components/submit-button";
 
 const CATEGORIES = [
   "dominios",
@@ -260,6 +260,21 @@ export default async function ProveedoresPage({
                     <SubmitButton
                       className="mt-1 rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink hover:opacity-90 sm:col-span-2"
                      pendingLabel="Guardando…">Guardar condiciones</SubmitButton>
+                  </form>
+
+                  <form
+                    action={archiveProvider.bind(null, p.id)}
+                    className="mt-3 border-t border-line pt-3"
+                  >
+                    <SubmitButton
+                      className="text-xs text-muted hover:text-violet"
+                      pendingLabel="Archivando…"
+                    >
+                      Archivar proveedor
+                    </SubmitButton>
+                    <span className="ml-3 text-xs text-muted">
+                      Solo si no tiene activos vigentes.
+                    </span>
                   </form>
                 </details>
               </div>

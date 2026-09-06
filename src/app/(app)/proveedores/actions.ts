@@ -110,3 +110,35 @@ export async function updateProvider(id: string, formData: FormData): Promise<vo
   if (error) throw new Error(`No se pudo actualizar el proveedor: ${error.message}`);
   revalidatePath("/proveedores");
 }
+
+/**
+ * Archiva un proveedor. No se borra: sus activos históricos conservan
+ * la referencia. Se rechaza si todavía tiene activos vigentes.
+ */
+export async function archiveProvider(providerId: string): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { count } = await supabase
+    .from("assets")
+    .select("id", { count: "exact", head: true })
+    .eq("provider_id", providerId)
+    .is("deleted_at", null);
+
+  if ((count ?? 0) > 0) {
+    redirect(
+      `/proveedores?syncError=${encodeURIComponent(
+        `No se puede archivar: el proveedor tiene ${count} activo(s) vigente(s). Reasignalos o archivalos primero.`
+      )}`
+    );
+  }
+
+  const { error } = await supabase
+    .from("providers")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", providerId);
+
+  if (error) throw new Error(`No se pudo archivar: ${error.message}`);
+  revalidatePath("/proveedores");
+  redirect("/proveedores?synced=Proveedor%20archivado");
+}
