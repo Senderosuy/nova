@@ -81,7 +81,7 @@ export default async function DashboardPage() {
     supabase.from("partner_account").select("name,balance_usd").gt("balance_usd", 0),
     supabase
       .from("project_tech_status")
-      .select("project_id,name,completeness_pct,days_since_review"),
+      .select("project_id,name,completeness_pct,days_since_review,has_doc"),
   ]);
 
   const gap = Number(sust?.gap_usd ?? 0);

@@ -49,7 +49,7 @@ export default async function ProyectosPage({
       .select("id,name")
       .is("deleted_at", null)
       .order("name"),
-    supabase.from("project_tech_status").select("project_id,completeness_pct"),
+    supabase.from("project_tech_status").select("project_id,completeness_pct,has_doc"),
     supabase
       .from("project_margin")
       .select("project_id,year,revenue_usd,cost_usd,margin_usd")
@@ -77,7 +77,10 @@ export default async function ProyectosPage({
   }
 
   const techByProject = new Map(
-    (techStatus ?? []).map((t) => [t.project_id, Number(t.completeness_pct)])
+    (techStatus ?? []).map((t) => [
+      t.project_id,
+      { pct: Number(t.completeness_pct), hasDoc: Boolean(t.has_doc) },
+    ])
   );
 
   const shown = new Set(filtered.map((p) => p.id));
@@ -194,19 +197,23 @@ export default async function ProyectosPage({
                   </td>
                   <td className="px-4 py-3">
                     {(() => {
-                      const t = techByProject.get(p.id) ?? 0;
+                      const t = techByProject.get(p.id);
+                      if (!t || t.pct === 0)
+                        return (
+                          <span className="text-xs text-muted" title="Sin ficha técnica">
+                            —
+                          </span>
+                        );
                       return (
                         <span
-                          className={
-                            t >= 80
-                              ? "text-xs text-accent"
-                              : t > 0
-                                ? "text-xs text-cream"
-                                : "text-xs text-muted"
+                          className={t.pct >= 80 ? "text-xs text-accent" : "text-xs text-cream"}
+                          title={
+                            t.hasDoc
+                              ? "Documento completo cargado"
+                              : `Ficha técnica ${t.pct}% completa`
                           }
-                          title={`Ficha técnica ${t}% completa`}
                         >
-                          {t > 0 ? `${t}%` : "—"}
+                          {t.hasDoc ? "✓ doc" : `${t.pct}%`}
                         </span>
                       );
                     })()}
