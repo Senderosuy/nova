@@ -39,11 +39,16 @@ export default async function ActivosPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { data: assets } = await supabase
-    .from("assets")
-    .select("id,type,name,provider,identifier,ownership,cost,currency,expires_at")
-    .is("deleted_at", null)
-    .order("expires_at", { ascending: true, nullsFirst: false });
+  const [{ data: assets }, { data: providers }] = await Promise.all([
+    supabase
+      .from("assets")
+      .select(
+        "id,type,name,provider,identifier,ownership,cost,currency,billing_cycle,expires_at"
+      )
+      .is("deleted_at", null)
+      .order("expires_at", { ascending: true, nullsFirst: false }),
+    supabase.from("providers").select("id,name").is("deleted_at", null).order("name"),
+  ]);
 
   return (
     <div>
@@ -85,7 +90,7 @@ export default async function ActivosPage({
                 <th className="px-4 py-3 font-medium">Activo</th>
                 <th className="px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Proveedor</th>
-                <th className="px-4 py-3 font-medium">Propiedad</th>
+                <th className="px-4 py-3 font-medium">Costo neto</th>
                 <th className="px-4 py-3 font-medium">Vence</th>
               </tr>
             </thead>
@@ -95,7 +100,11 @@ export default async function ActivosPage({
                   <td className="px-4 py-3 font-medium">{a.name}</td>
                   <td className="px-4 py-3 text-muted">{a.type}</td>
                   <td className="px-4 py-3 text-muted">{a.provider ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted">{a.ownership}</td>
+                  <td className="px-4 py-3 text-muted">
+                    {a.cost
+                      ? `${a.currency} ${Number(a.cost).toLocaleString("es-UY")} / ${a.billing_cycle}`
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <ExpiryBadge expires={a.expires_at} />
                   </td>
@@ -139,7 +148,14 @@ export default async function ActivosPage({
 
           <label className={`${labelCls} mt-3`}>
             Proveedor
-            <input name="provider" className={inputCls} placeholder="nic.com.uy" />
+            <select name="provider_id" defaultValue="" className={inputCls}>
+              <option value="">— sin proveedor —</option>
+              {(providers ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className={`${labelCls} mt-3`}>
@@ -157,7 +173,7 @@ export default async function ActivosPage({
 
           <div className="mt-3 grid grid-cols-2 gap-2">
             <label className={labelCls}>
-              Costo
+              Costo neto
               <input name="cost" type="number" step="0.01" className={inputCls} />
             </label>
             <label className={labelCls}>
@@ -168,6 +184,18 @@ export default async function ActivosPage({
               </select>
             </label>
           </div>
+
+          <label className={`${labelCls} mt-3`}>
+            Ciclo de cobro
+            <select name="billing_cycle" defaultValue="anual" className={inputCls}>
+              <option value="mensual">mensual</option>
+              <option value="trimestral">trimestral</option>
+              <option value="semestral">semestral</option>
+              <option value="anual">anual</option>
+              <option value="unico">pago único</option>
+              <option value="gratis">gratis</option>
+            </select>
+          </label>
 
           <label className={`${labelCls} mt-3`}>
             Vencimiento

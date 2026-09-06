@@ -25,7 +25,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: costs }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -35,7 +35,9 @@ export default async function ProyectoDetailPage({
         .single(),
       supabase
         .from("asset_assignments")
-        .select("id,assigned_from,assigned_until,assets(id,name,type,provider,expires_at)")
+        .select(
+          "id,assigned_from,assigned_until,assets(id,name,type,provider,expires_at,cost,currency,billing_cycle)"
+        )
         .eq("project_id", id)
         .order("assigned_from", { ascending: false }),
       supabase
@@ -49,6 +51,10 @@ export default async function ProyectoDetailPage({
         .eq("project_id", id)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase
+        .from("project_costs")
+        .select("currency,net_monthly,net_yearly")
+        .eq("project_id", id),
     ]);
 
   if (!project) notFound();
@@ -126,6 +132,32 @@ export default async function ProyectoDetailPage({
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
         <div>
+          <div className="mb-6 rounded-[18px] border border-line bg-ink-2 p-5">
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-base font-semibold">Costo neto del proyecto</h2>
+              <span className="text-xs text-muted">interno — no se informa al cliente</span>
+            </div>
+            {(costs ?? []).length === 0 ? (
+              <p className="mt-3 text-sm text-muted">
+                Sin costos asociados. Asigná activos con costo o servicios recurrentes.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-6">
+                {(costs ?? []).map((c) => (
+                  <div key={c.currency}>
+                    <p className="font-display text-2xl font-semibold text-accent">
+                      {c.currency} {Number(c.net_monthly).toLocaleString("es-UY")}
+                      <span className="ml-1 text-sm font-normal text-muted">/mes</span>
+                    </p>
+                    <p className="text-sm text-muted">
+                      {c.currency} {Number(c.net_yearly).toLocaleString("es-UY")} / año
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="rounded-[18px] border border-line bg-ink-2">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
               <h2 className="font-display text-base font-semibold">Activos asignados</h2>
@@ -151,10 +183,17 @@ export default async function ProyectoDetailPage({
 
             <ul>
               {active.map((a) => {
-                const rel = a.assets as unknown as
-                  | { id: string; name: string; type: string; provider: string | null; expires_at: string | null }
-                  | { id: string; name: string; type: string; provider: string | null; expires_at: string | null }[]
-                  | null;
+                type A = {
+                  id: string;
+                  name: string;
+                  type: string;
+                  provider: string | null;
+                  expires_at: string | null;
+                  cost: number | null;
+                  currency: string;
+                  billing_cycle: string;
+                };
+                const rel = a.assets as unknown as A | A[] | null;
                 const asset = Array.isArray(rel) ? rel[0] : rel;
                 if (!asset) return null;
                 return (
@@ -167,6 +206,9 @@ export default async function ProyectoDetailPage({
                       <span className="ml-2 text-xs text-muted">
                         {asset.type} · {asset.provider ?? "—"}
                         {asset.expires_at ? ` · vence ${asset.expires_at}` : ""}
+                        {asset.cost
+                          ? ` · ${asset.currency} ${asset.cost} ${asset.billing_cycle}`
+                          : " · sin costo"}
                       </span>
                     </div>
                     <form action={unassignAsset.bind(null, project.id, a.id)}>
