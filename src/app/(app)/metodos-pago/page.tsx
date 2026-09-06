@@ -24,12 +24,14 @@ export default async function MetodosPagoPage() {
   const supabase = createClient(cookieStore);
   const year = new Date().getFullYear();
 
-  const [{ data: methods }, { data: spend }] = await Promise.all([
+  const [{ data: methods }, { data: partners }, { data: clientList }, { data: spend }] = await Promise.all([
     supabase
       .from("payment_methods")
-      .select("id,label,kind,institution,last_four,currency,notes,active,holder,expires_on")
+      .select("id,label,kind,institution,last_four,currency,notes,active,holder,expires_on,owner_partner_id,owner_client_id")
       .order("active", { ascending: false })
       .order("label"),
+    supabase.from("partners").select("id,name").eq("active", true).order("name"),
+    supabase.from("clients").select("id,name").is("deleted_at", null).order("name"),
     supabase
       .from("spend_by_payment_method")
       .select("payment_method_id,year,usd_total,movimientos")
@@ -81,6 +83,11 @@ export default async function MetodosPagoPage() {
                       {m.institution ? ` · ${m.institution}` : ""}
                       {m.last_four ? ` · ····${m.last_four}` : ""} · {m.currency}
                       {m.holder ? ` · ${m.holder}` : ""}
+                      {m.owner_client_id
+                        ? " · del cliente"
+                        : m.owner_partner_id
+                          ? " · personal del socio"
+                          : " · de Nova"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -169,6 +176,23 @@ export default async function MetodosPagoPage() {
                         defaultValue={m.expires_on ? m.expires_on.slice(0, 7) : ""}
                         className={inputCls}
                       />
+                    </label>
+
+                    <label className={`${labelCls} sm:col-span-2`}>
+                      Titular del medio
+                      <select name="owner" defaultValue={m.owner_client_id ? `client:${m.owner_client_id}` : m.owner_partner_id ? `partner:${m.owner_partner_id}` : ""} className={inputCls}>
+                        <option value="">Nova — la empresa</option>
+                        {(partners ?? []).map((p) => (
+                          <option key={p.id} value={`partner:${p.id}`}>
+                            {p.name} — personal, cuenta como aporte
+                          </option>
+                        ))}
+                        {(clientList ?? []).map((c) => (
+                          <option key={c.id} value={`client:${c.id}`}>
+                            {c.name} — del cliente, no es costo de Nova
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label className={`${labelCls} sm:col-span-2`}>
                       Notas
@@ -264,6 +288,23 @@ export default async function MetodosPagoPage() {
           <label className={`${labelCls} mt-3`}>
             Vencimiento <span className="normal-case">(mes/año, para avisar antes)</span>
             <input name="expires_on" type="month" className={inputCls} />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Titular del medio
+            <select name="owner" defaultValue="" className={inputCls}>
+              <option value="">Nova — la empresa</option>
+              {(partners ?? []).map((p) => (
+                <option key={p.id} value={`partner:${p.id}`}>
+                  {p.name} — personal, cuenta como aporte
+                </option>
+              ))}
+              {(clientList ?? []).map((c) => (
+                <option key={c.id} value={`client:${c.id}`}>
+                  {c.name} — del cliente, no es costo de Nova
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className={`${labelCls} mt-3`}>

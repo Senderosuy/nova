@@ -7,6 +7,17 @@ import { createClient } from "@/utils/supabase/server";
 const txt = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim() || null;
 
 /** "2030-05" -> "2030-05-01". El día no aporta: las tarjetas vencen por mes. */
+/**
+ * El campo "owner" viene como "partner:<id>" o "client:<id>".
+ * Un medio pertenece a un socio, a un cliente, o a la propia Nova.
+ */
+const ownerOf = (fd: FormData) => {
+  const v = String(fd.get("owner") ?? "").trim();
+  if (v.startsWith("partner:")) return { partner: v.slice(8), client: null };
+  if (v.startsWith("client:")) return { partner: null, client: v.slice(7) };
+  return { partner: null, client: null };
+};
+
 const monthToDate = (fd: FormData, k: string) => {
   const v = String(fd.get(k) ?? "").trim();
   return v ? `${v}-01` : null;
@@ -28,6 +39,8 @@ export async function createPaymentMethod(formData: FormData): Promise<void> {
     last_four: lastFour,
     currency: String(formData.get("currency") ?? "USD"),
     holder: txt(formData, "holder"),
+    owner_partner_id: ownerOf(formData).partner,
+    owner_client_id: ownerOf(formData).client,
     expires_on: monthToDate(formData, "expires_on"),
     notes: txt(formData, "notes"),
   });
