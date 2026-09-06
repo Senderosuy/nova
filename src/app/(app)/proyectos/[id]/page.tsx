@@ -36,7 +36,7 @@ export default async function ProyectoDetailPage({
     await Promise.all([
       supabase
         .from("projects")
-        .select("id,name,type,status,ownership_type,description,production_url,repo_url,clients(name)")
+        .select("id,name,type,status,ownership_type,description,production_url,repo_url,docs_repo,docs_path,docs_branch,docs_synced_at,docs_sync_result,clients(name)")
         .eq("id", id)
         .is("deleted_at", null)
         .single(),
@@ -361,6 +361,13 @@ export default async function ProyectoDetailPage({
           projectId={project.id}
           profile={(techProfile ?? null) as never}
           status={(techStatus ?? null) as never}
+          docs={{
+            docs_repo: project.docs_repo,
+            docs_path: project.docs_path,
+            docs_branch: project.docs_branch,
+            docs_synced_at: project.docs_synced_at,
+            docs_sync_result: project.docs_sync_result,
+          }}
         />
 
         <div className="rounded-[18px] border border-line bg-ink-2 p-5">

@@ -69,3 +69,63 @@ export async function markReviewed(projectId: string): Promise<void> {
   if (error) throw new Error(`No se pudo marcar como revisada: ${error.message}`);
   revalidatePath(`/proyectos/${projectId}`);
 }
+
+/** Guarda de dónde se lee la ficha y sincroniza en el momento. */
+export async function saveDocsSource(
+  projectId: string,
+  formData: FormData
+): Promise<void> {
+  const { normalizeRepo } = await import("@/lib/github");
+  const { syncProjectDoc } = await import("@/lib/sync-docs");
+
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const raw = String(formData.get("docs_repo") ?? "").trim();
+  const repo = raw ? normalizeRepo(raw) : null;
+
+  if (raw && !repo) {
+    throw new Error(
+      "Repositorio inválido. Usá owner/repo o la URL de GitHub."
+    );
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      docs_repo: repo,
+      docs_path: String(formData.get("docs_path") ?? "").trim() || "ficha-tecnica.md",
+      docs_branch: String(formData.get("docs_branch") ?? "").trim() || null,
+    })
+    .eq("id", projectId);
+
+  if (error) throw new Error(`No se pudo guardar: ${error.message}`);
+
+  if (repo) {
+    const { data: p } = await supabase
+      .from("projects")
+      .select("id,name,docs_repo,docs_path,docs_branch")
+      .eq("id", projectId)
+      .single();
+    if (p) await syncProjectDoc(supabase, p);
+  }
+
+  revalidatePath(`/proyectos/${projectId}`);
+}
+
+/** Vuelve a leer la ficha del repositorio ahora. */
+export async function syncDocsNow(projectId: string): Promise<void> {
+  const { syncProjectDoc } = await import("@/lib/sync-docs");
+
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: p } = await supabase
+    .from("projects")
+    .select("id,name,docs_repo,docs_path,docs_branch")
+    .eq("id", projectId)
+    .single();
+
+  if (p) await syncProjectDoc(supabase, p);
+  revalidatePath(`/proyectos/${projectId}`);
+}

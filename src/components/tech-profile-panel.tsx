@@ -1,5 +1,10 @@
 import { SubmitButton } from "./submit-button";
-import { saveTechProfile, markReviewed } from "@/app/(app)/proyectos/[id]/tech-actions";
+import {
+  saveTechProfile,
+  markReviewed,
+  saveDocsSource,
+  syncDocsNow,
+} from "@/app/(app)/proyectos/[id]/tech-actions";
 import { TechImport } from "./tech-import";
 
 const inputCls =
@@ -65,14 +70,24 @@ const FIELDS: {
  * continuarlo. Muestra completitud y antigüedad porque una ficha vieja
  * informa mal con apariencia de certeza.
  */
+export type DocsSource = {
+  docs_repo: string | null;
+  docs_path: string | null;
+  docs_branch: string | null;
+  docs_synced_at: string | null;
+  docs_sync_result: string | null;
+};
+
 export function TechProfilePanel({
   projectId,
   profile,
   status,
+  docs,
 }: {
   projectId: string;
   profile: TechProfile;
   status: TechStatus;
+  docs: DocsSource;
 }) {
   const pct = Number(status?.completeness_pct ?? 0);
   const days = status?.days_since_review ?? null;
@@ -139,7 +154,102 @@ export function TechProfilePanel({
         </p>
       )}
 
-      <details className="mt-4 border-t border-line px-5 py-4">
+      <div className="mt-4 border-t border-line px-5 py-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              Origen de la ficha
+            </p>
+            <p className="mt-1 text-sm">
+              {docs.docs_repo ? (
+                <>
+                  <span className="text-cream">
+                    {docs.docs_repo}/{docs.docs_path ?? "ficha-tecnica.md"}
+                  </span>
+                  {docs.docs_branch ? (
+                    <span className="text-muted"> · rama {docs.docs_branch}</span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-muted">Carga manual</span>
+              )}
+            </p>
+            {docs.docs_sync_result && (
+              <p
+                className={
+                  docs.docs_sync_result.startsWith("error")
+                    ? "mt-1 text-xs text-violet"
+                    : "mt-1 text-xs text-muted"
+                }
+              >
+                {docs.docs_synced_at
+                  ? new Date(docs.docs_synced_at).toLocaleString("es-UY") + " · "
+                  : ""}
+                {docs.docs_sync_result}
+              </p>
+            )}
+          </div>
+          {docs.docs_repo && (
+            <form action={syncDocsNow.bind(null, projectId)} className="shrink-0">
+              <SubmitButton
+                className="rounded-lg border border-accent/40 bg-accent-dim px-3 py-1.5 font-display text-xs font-semibold text-accent hover:border-accent"
+                pendingLabel="Leyendo…"
+              >
+                Sincronizar ahora
+              </SubmitButton>
+            </form>
+          )}
+        </div>
+
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs text-muted hover:text-accent">
+            Configurar repositorio
+          </summary>
+          <form
+            action={saveDocsSource.bind(null, projectId)}
+            className="mt-3 grid gap-3 sm:grid-cols-3"
+          >
+            <label className={labelCls + " sm:col-span-3"}>
+              Repositorio <span className="normal-case">(owner/repo o URL de GitHub)</span>
+              <input
+                name="docs_repo"
+                defaultValue={docs.docs_repo ?? ""}
+                placeholder="Senderosuy/newen"
+                className={inputCls}
+              />
+            </label>
+            <label className={labelCls + " sm:col-span-2"}>
+              Ruta del archivo
+              <input
+                name="docs_path"
+                defaultValue={docs.docs_path ?? "ficha-tecnica.md"}
+                className={inputCls}
+              />
+            </label>
+            <label className={labelCls}>
+              Rama
+              <input
+                name="docs_branch"
+                defaultValue={docs.docs_branch ?? ""}
+                placeholder="por defecto"
+                className={inputCls}
+              />
+            </label>
+            <SubmitButton
+              className="rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink hover:opacity-90 sm:col-span-3"
+              pendingLabel="Guardando…"
+            >
+              Guardar y sincronizar
+            </SubmitButton>
+          </form>
+          <p className="mt-2 text-xs text-muted">
+            La ficha se relee sola todos los días. Al configurar un repositorio, lo que
+            esté en el archivo pisa la carga manual.
+          </p>
+        </details>
+      </div>
+
+      <details className="border-t border-line px-5 py-4">
         <summary className="cursor-pointer text-sm text-accent">
           {profile ? "Editar ficha" : "Completar ficha"}
         </summary>
