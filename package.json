@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "agent:status": "node scripts/agent.mjs status",
+    "agent:claim": "node scripts/agent.mjs claim",
+    "agent:heartbeat": "node scripts/agent.mjs heartbeat",
+    "agent:release": "node scripts/agent.mjs release"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

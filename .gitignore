@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Supabase CLI
 supabase/.temp/
+# los locks SI se versionan: son el canal entre agentes
+!.agent/
+!.agent/**
