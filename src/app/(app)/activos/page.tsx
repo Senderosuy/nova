@@ -81,7 +81,9 @@ export default async function ActivosPage({
     matches(q, a.name, a.type, a.provider, a.identifier, a.ownership, a.billing_cycle)
   );
 
-  const orphans = filtered.filter((a) => !projectOf.get(a.id));
+  const orphans = filtered.filter(
+    (a) => !projectOf.get(a.id) && a.ownership === "nova"
+  );
   const unlabeled = orphans.filter((a) => !a.cost_reason);
 
   return (
@@ -136,6 +138,15 @@ export default async function ActivosPage({
                   <td className="px-4 py-3">
                     {(() => {
                       const proj = projectOf.get(a.id);
+                      if (a.ownership === "cliente")
+                        return (
+                          <span
+                            className="rounded-full bg-ink-3 px-2 py-0.5 text-xs text-cream"
+                            title="Del cliente: Nova lo administra pero no lo costea"
+                          >
+                            cliente{proj ? ` · ${proj}` : ""}
+                          </span>
+                        );
                       if (proj)
                         return <span className="text-xs text-muted">{proj}</span>;
                       if (a.cost_reason)
