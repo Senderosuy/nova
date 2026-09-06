@@ -12,7 +12,15 @@ export type Investment = {
  * Para productos propios de Nova el costo no es un problema: es inversión.
  * Se muestra lo invertido, lo recuperado y la posición neta, sin advertencias.
  */
-export function InvestmentPanel({ inv, year }: { inv: Investment; year: number }) {
+export function InvestmentPanel({
+  inv,
+  year,
+  fundedBy,
+}: {
+  inv: Investment;
+  year: number;
+  fundedBy?: { name: string; usd: number }[];
+}) {
   const recovered =
     Number(inv.invested_total_usd) > 0
       ? (Number(inv.returned_total_usd) / Number(inv.invested_total_usd)) * 100
@@ -64,8 +72,32 @@ export function InvestmentPanel({ inv, year }: { inv: Investment; year: number }
       <p className="mt-4 text-xs text-muted">
         {recovered !== null && recovered > 0
           ? `Recuperado el ${recovered.toFixed(0)}% de la inversión.`
-          : "Todavía sin retorno. El costo acumulado es la inversión de Nova en el producto."}
+          : "Todavía sin retorno. El costo acumulado es la inversión en el producto."}
       </p>
+
+      {fundedBy && fundedBy.length > 0 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-xs uppercase tracking-wide text-muted">Aportado por</p>
+          <ul className="mt-2 space-y-1 text-sm">
+            {fundedBy.map((f) => (
+              <li key={f.name} className="flex justify-between">
+                <span>{f.name}</span>
+                <span className="text-cream">
+                  USD{" "}
+                  {f.usd.toLocaleString("es-UY", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">
+            Registro de lo puesto en el producto. A reintegrar cuando genere
+            utilidades.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
