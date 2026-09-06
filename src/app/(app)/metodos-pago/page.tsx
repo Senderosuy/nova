@@ -16,6 +16,9 @@ const inputCls =
   "mt-1 w-full rounded-lg border border-line-2 bg-ink px-3 py-2 text-sm text-cream outline-none focus:border-accent";
 const labelCls = "block text-xs font-medium uppercase tracking-wide text-muted";
 
+const daysTo = (d: string) =>
+  Math.ceil((new Date(d).getTime() - Date.now()) / 86_400_000);
+
 export default async function MetodosPagoPage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -24,7 +27,7 @@ export default async function MetodosPagoPage() {
   const [{ data: methods }, { data: spend }] = await Promise.all([
     supabase
       .from("payment_methods")
-      .select("id,label,kind,institution,last_four,currency,notes,active")
+      .select("id,label,kind,institution,last_four,currency,notes,active,holder,expires_on")
       .order("active", { ascending: false })
       .order("label"),
     supabase
@@ -49,7 +52,7 @@ export default async function MetodosPagoPage() {
       </h1>
       <p className="mt-1 text-sm text-muted">
         Con qué paga Nova. Cada gasto se asocia a un método para poder responder qué se
-        paga con cada tarjeta o cuenta. Se guardan solo los últimos cuatro dígitos.
+        paga con cada tarjeta o cuenta. Se guardan solo los últimos cuatro dígitos y el mes de vencimiento: con eso no se puede hacer un cargo, pero sí avisar antes de que fallen los débitos.
       </p>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px]">
@@ -77,6 +80,7 @@ export default async function MetodosPagoPage() {
                       {m.kind.replace("_", " ")}
                       {m.institution ? ` · ${m.institution}` : ""}
                       {m.last_four ? ` · ····${m.last_four}` : ""} · {m.currency}
+                      {m.holder ? ` · ${m.holder}` : ""}
                     </p>
                   </div>
                   <div className="text-right">
@@ -91,6 +95,17 @@ export default async function MetodosPagoPage() {
                       </>
                     ) : (
                       <p className="text-xs text-muted">sin movimientos en {year}</p>
+                    )}
+                    {m.expires_on && (
+                      <p
+                        className={
+                          daysTo(m.expires_on) <= 90
+                            ? "mt-1 text-xs text-violet"
+                            : "mt-1 text-xs text-muted"
+                        }
+                      >
+                        vence {m.expires_on.slice(0, 7).split("-").reverse().join("/")}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -141,6 +156,19 @@ export default async function MetodosPagoPage() {
                         <option value="USD">USD</option>
                         <option value="UYU">UYU</option>
                       </select>
+                    </label>
+                    <label className={labelCls}>
+                      Titular
+                      <input name="holder" defaultValue={m.holder ?? ""} className={inputCls} />
+                    </label>
+                    <label className={labelCls}>
+                      Vencimiento
+                      <input
+                        name="expires_on"
+                        type="month"
+                        defaultValue={m.expires_on ? m.expires_on.slice(0, 7) : ""}
+                        className={inputCls}
+                      />
                     </label>
                     <label className={`${labelCls} sm:col-span-2`}>
                       Notas
@@ -226,6 +254,16 @@ export default async function MetodosPagoPage() {
               <option value="USD">USD</option>
               <option value="UYU">UYU</option>
             </select>
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Titular
+            <input name="holder" className={inputCls} />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Vencimiento <span className="normal-case">(mes/año, para avisar antes)</span>
+            <input name="expires_on" type="month" className={inputCls} />
           </label>
 
           <label className={`${labelCls} mt-3`}>

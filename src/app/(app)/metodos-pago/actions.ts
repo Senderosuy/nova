@@ -6,6 +6,12 @@ import { createClient } from "@/utils/supabase/server";
 
 const txt = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim() || null;
 
+/** "2030-05" -> "2030-05-01". El día no aporta: las tarjetas vencen por mes. */
+const monthToDate = (fd: FormData, k: string) => {
+  const v = String(fd.get(k) ?? "").trim();
+  return v ? `${v}-01` : null;
+};
+
 export async function createPaymentMethod(formData: FormData): Promise<void> {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -21,6 +27,8 @@ export async function createPaymentMethod(formData: FormData): Promise<void> {
     institution: txt(formData, "institution"),
     last_four: lastFour,
     currency: String(formData.get("currency") ?? "USD"),
+    holder: txt(formData, "holder"),
+    expires_on: monthToDate(formData, "expires_on"),
     notes: txt(formData, "notes"),
   });
 
