@@ -42,3 +42,9 @@ next-env.d.ts
 
 # excepcion: plantilla de variables sin valores
 !.env.example
+
+.vercel
+.env*
+
+# Supabase CLI
+supabase/.temp/
