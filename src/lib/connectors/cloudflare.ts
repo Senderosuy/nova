@@ -75,7 +75,10 @@ export const cloudflareConnector: ProviderConnector = {
     return {
       created,
       updated,
-      message: `${created} zona(s) nueva(s), ${updated} actualizada(s)`,
+      message:
+        body.result.length === 0
+          ? "Credencial válida, pero la cuenta no tiene zonas cargadas en Cloudflare todavía"
+          : `${created} zona(s) nueva(s), ${updated} actualizada(s)`,
     };
   },
 };
