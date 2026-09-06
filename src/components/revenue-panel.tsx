@@ -7,6 +7,7 @@ import {
   setChargeBilling,
   deleteCharge,
   archiveService,
+  setBillingMode,
 } from "@/app/(app)/proyectos/[id]/revenue-actions";
 
 const inputCls =
@@ -22,6 +23,8 @@ export type Schedule = {
   confirmation_status: string;
   billing_status: string;
   lead_days: number;
+  billing_mode: string;
+  effective_first_charge: string | null;
   anchor_asset: string | null;
   anchor_expires_at: string | null;
   renewal_date: string | null;
@@ -92,6 +95,9 @@ export function RevenuePanel({
                     {s.anchor_asset
                       ? `Ancla: ${s.anchor_asset} · renueva ${s.renewal_date ?? "—"}`
                       : `Renueva ${s.renewal_date ?? "sin fecha"}`}
+                    {s.billing_mode === "vencido" && s.effective_first_charge
+                      ? ` · primer cobro ${s.effective_first_charge}`
+                      : ""}
                   </p>
                   {s.confirm_by && (
                     <p className="mt-1 text-xs">
@@ -119,6 +125,7 @@ export function RevenuePanel({
                       label={`cobro: ${s.billing_status}`}
                       tone={s.billing_status === "cobrado" ? "ok" : "idle"}
                     />
+                    <Chip label={s.billing_mode} tone="idle" />
                   </div>
                 </div>
 
@@ -150,6 +157,18 @@ export function RevenuePanel({
                       </SubmitButton>
                     </form>
                   )}
+                  <form
+                    action={setBillingMode.bind(
+                      null,
+                      projectId,
+                      s.service_id,
+                      s.billing_mode === "vencido" ? "adelantado" : "vencido"
+                    )}
+                  >
+                    <SubmitButton className="text-muted hover:text-cream" pendingLabel="…">
+                      {s.billing_mode === "vencido" ? "Pasar a adelantado" : "Pasar a vencido"}
+                    </SubmitButton>
+                  </form>
                   <form action={archiveService.bind(null, projectId, s.service_id)}>
                     <SubmitButton className="text-muted hover:text-violet" pendingLabel="…">
                       Archivar
@@ -216,6 +235,14 @@ export function RevenuePanel({
             </label>
 
             <label className={labelCls}>
+              Modalidad de cobro
+              <select name="billing_mode" defaultValue="adelantado" className={inputCls}>
+                <option value="adelantado">Adelantado — cobro el período que empieza</option>
+                <option value="vencido">Vencido — cobro el período transcurrido</option>
+              </select>
+            </label>
+
+            <label className={labelCls}>
               Días de anticipación
               <input name="lead_days" type="number" defaultValue={45} className={inputCls} />
             </label>
@@ -231,6 +258,11 @@ export function RevenuePanel({
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className={`${labelCls} sm:col-span-2`}>
+              Primer cobro <span className="normal-case">(opcional: si el primer período no se cobró)</span>
+              <input name="first_charge_date" type="date" className={inputCls} />
             </label>
 
             <label className={`${labelCls} sm:col-span-2`}>

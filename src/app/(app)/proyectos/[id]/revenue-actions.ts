@@ -31,6 +31,8 @@ export async function createService(projectId: string, formData: FormData): Prom
     frequency: String(formData.get("frequency") ?? "anual"),
     net_cost: num(formData, "net_cost"),
     net_currency: String(formData.get("net_currency") ?? "USD"),
+    billing_mode: String(formData.get("billing_mode") ?? "adelantado"),
+    first_charge_date: txt(formData, "first_charge_date"),
     anchor_asset_id: txt(formData, "anchor_asset_id"),
     lead_days: num(formData, "lead_days") ?? 45,
     next_billing_date: txt(formData, "next_billing_date"),
@@ -145,6 +147,25 @@ export async function deleteCharge(projectId: string, chargeId: string): Promise
 
   const { error } = await supabase.from("project_charges").delete().eq("id", chargeId);
   if (error) throw new Error(`No se pudo eliminar el cargo: ${error.message}`);
+  revalidatePath(`/proyectos/${projectId}`);
+  revalidatePath("/proyectos");
+}
+
+/** Cambia la modalidad de cobro (adelantado / vencido) de un servicio. */
+export async function setBillingMode(
+  projectId: string,
+  serviceId: string,
+  mode: "adelantado" | "vencido"
+): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("recurring_services")
+    .update({ billing_mode: mode })
+    .eq("id", serviceId);
+
+  if (error) throw new Error(`No se pudo cambiar la modalidad: ${error.message}`);
   revalidatePath(`/proyectos/${projectId}`);
   revalidatePath("/proyectos");
 }
