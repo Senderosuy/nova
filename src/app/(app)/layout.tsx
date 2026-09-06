@@ -8,6 +8,7 @@ const nav = [
   { href: "/", label: "Dashboard" },
   { href: "/clientes", label: "Clientes" },
   { href: "/proyectos", label: "Proyectos" },
+  { href: "/activos", label: "Activos" },
 ];
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {

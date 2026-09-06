@@ -1,0 +1,192 @@
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
+import { createAsset, syncHostinger } from "./actions";
+
+const TYPES = ["dominio", "hosting", "herramienta", "licencia", "otro"] as const;
+
+const inputCls =
+  "mt-1.5 w-full rounded-lg border border-line-2 bg-ink px-3 py-2 text-sm text-cream outline-none focus:border-accent";
+const labelCls = "block text-xs font-medium uppercase tracking-wide text-muted";
+
+function daysLeft(expires: string | null): number | null {
+  if (!expires) return null;
+  const diff = new Date(expires).getTime() - Date.now();
+  return Math.ceil(diff / 86_400_000);
+}
+
+function ExpiryBadge({ expires }: { expires: string | null }) {
+  const days = daysLeft(expires);
+  if (days === null) return <span className="text-muted">—</span>;
+  const cls =
+    days <= 30
+      ? "bg-violet/20 text-violet"
+      : days <= 90
+        ? "bg-accent-dim text-accent"
+        : "bg-ink-3 text-muted";
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-xs ${cls}`}>
+      {expires} · {days} d
+    </span>
+  );
+}
+
+export default async function ActivosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ synced?: string; updated?: string; syncError?: string }>;
+}) {
+  const { synced, updated, syncError } = await searchParams;
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: assets } = await supabase
+    .from("assets")
+    .select("id,type,name,provider,identifier,ownership,cost,currency,expires_at")
+    .is("deleted_at", null)
+    .order("expires_at", { ascending: true, nullsFirst: false });
+
+  return (
+    <div>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Activos</h1>
+          <p className="mt-1 text-sm text-muted">
+            {assets?.length ?? 0} activo{(assets?.length ?? 0) === 1 ? "" : "s"} — dominios,
+            hostings, herramientas y licencias de Nova.
+          </p>
+        </div>
+        <form action={syncHostinger}>
+          <button
+            type="submit"
+            className="rounded-lg border border-accent/40 bg-accent-dim px-4 py-2 font-display text-sm font-semibold text-accent transition-colors hover:border-accent"
+          >
+            Sincronizar Hostinger
+          </button>
+        </form>
+      </div>
+
+      {synced !== undefined && (
+        <p className="mt-4 rounded-lg border border-accent/40 bg-accent-dim px-4 py-2 text-sm text-accent">
+          Sincronización OK: {synced} dominio{synced === "1" ? "" : "s"} nuevo
+          {synced === "1" ? "" : "s"}, {updated ?? 0} actualizado{updated === "1" ? "" : "s"}.
+        </p>
+      )}
+      {syncError && (
+        <p className="mt-4 rounded-lg border border-violet/40 bg-violet/10 px-4 py-2 text-sm text-violet">
+          Error de sincronización: {syncError}
+        </p>
+      )}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                <th className="px-4 py-3 font-medium">Activo</th>
+                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="px-4 py-3 font-medium">Proveedor</th>
+                <th className="px-4 py-3 font-medium">Propiedad</th>
+                <th className="px-4 py-3 font-medium">Vence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(assets ?? []).map((a) => (
+                <tr key={a.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-3 font-medium">{a.name}</td>
+                  <td className="px-4 py-3 text-muted">{a.type}</td>
+                  <td className="px-4 py-3 text-muted">{a.provider ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted">{a.ownership}</td>
+                  <td className="px-4 py-3">
+                    <ExpiryBadge expires={a.expires_at} />
+                  </td>
+                </tr>
+              ))}
+              {(assets ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                    Sin activos. Sincronizá Hostinger o cargá uno manual.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <form
+          action={createAsset}
+          className="h-fit rounded-[18px] border border-line bg-ink-2 p-5"
+        >
+          <h2 className="font-display text-base font-semibold">Activo manual</h2>
+          <p className="mt-1 text-xs text-muted">
+            Para dominios .uy (nic.com.uy), licencias u otros fuera de Hostinger.
+          </p>
+
+          <label className={`${labelCls} mt-4`}>
+            Tipo
+            <select name="type" defaultValue="dominio" className={inputCls}>
+              {TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Nombre *
+            <input name="name" required className={inputCls} placeholder="senderos.com.uy" />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Proveedor
+            <input name="provider" className={inputCls} placeholder="nic.com.uy" />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Identificador
+            <input name="identifier" className={inputCls} />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Propiedad
+            <select name="ownership" defaultValue="nova" className={inputCls}>
+              <option value="nova">Nova</option>
+              <option value="cliente">Cliente</option>
+            </select>
+          </label>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className={labelCls}>
+              Costo
+              <input name="cost" type="number" step="0.01" className={inputCls} />
+            </label>
+            <label className={labelCls}>
+              Moneda
+              <select name="currency" defaultValue="USD" className={inputCls}>
+                <option value="USD">USD</option>
+                <option value="UYU">UYU</option>
+              </select>
+            </label>
+          </div>
+
+          <label className={`${labelCls} mt-3`}>
+            Vencimiento
+            <input name="expires_at" type="date" className={inputCls} />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Notas
+            <textarea name="notes" rows={2} className={inputCls} />
+          </label>
+
+          <button
+            type="submit"
+            className="mt-5 w-full rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink transition-opacity hover:opacity-90"
+          >
+            Crear activo
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
