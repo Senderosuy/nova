@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import { createAsset, syncHostinger } from "./actions";
+import { createAsset } from "./actions";
 
 const TYPES = ["dominio", "hosting", "herramienta", "licencia", "otro"] as const;
 
@@ -30,12 +31,7 @@ function ExpiryBadge({ expires }: { expires: string | null }) {
   );
 }
 
-export default async function ActivosPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ synced?: string; updated?: string; syncError?: string }>;
-}) {
-  const { synced, updated, syncError } = await searchParams;
+export default async function ActivosPage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -60,27 +56,13 @@ export default async function ActivosPage({
             hostings, herramientas y licencias de Nova.
           </p>
         </div>
-        <form action={syncHostinger}>
-          <button
-            type="submit"
-            className="rounded-lg border border-accent/40 bg-accent-dim px-4 py-2 font-display text-sm font-semibold text-accent transition-colors hover:border-accent"
-          >
-            Sincronizar Hostinger
-          </button>
-        </form>
+        <Link
+          href="/proveedores"
+          className="rounded-lg border border-line-2 px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          Sincronizar desde proveedores
+        </Link>
       </div>
-
-      {synced !== undefined && (
-        <p className="mt-4 rounded-lg border border-accent/40 bg-accent-dim px-4 py-2 text-sm text-accent">
-          Sincronización OK: {synced} dominio{synced === "1" ? "" : "s"} nuevo
-          {synced === "1" ? "" : "s"}, {updated ?? 0} actualizado{updated === "1" ? "" : "s"}.
-        </p>
-      )}
-      {syncError && (
-        <p className="mt-4 rounded-lg border border-violet/40 bg-violet/10 px-4 py-2 text-sm text-violet">
-          Error de sincronización: {syncError}
-        </p>
-      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
