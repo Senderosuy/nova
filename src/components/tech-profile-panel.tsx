@@ -1,5 +1,6 @@
 import { SubmitButton } from "./submit-button";
 import { saveTechProfile, markReviewed } from "@/app/(app)/proyectos/[id]/tech-actions";
+import { TechImport } from "./tech-import";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-line-2 bg-ink px-3 py-2 text-sm text-cream outline-none focus:border-accent";
@@ -143,7 +144,15 @@ export function TechProfilePanel({
           {profile ? "Editar ficha" : "Completar ficha"}
         </summary>
 
-        <form action={saveTechProfile.bind(null, projectId)} className="mt-4 space-y-3">
+        <div className="mt-4">
+          <TechImport />
+        </div>
+
+        <form
+          action={saveTechProfile.bind(null, projectId)}
+          data-tech-form
+          className="mt-4 space-y-3"
+        >
           {FIELDS.map((f) => (
             <label key={f.name} className={labelCls}>
               {f.label}
