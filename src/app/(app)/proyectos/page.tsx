@@ -38,14 +38,41 @@ export default async function ProyectosPage({
     query = query.eq("status", status);
   }
 
-  const [{ data: projects }, { data: clients }] = await Promise.all([
+  const THIS_YEAR = new Date().getFullYear();
+
+  const [{ data: projects }, { data: clients }, { data: annual }] = await Promise.all([
     query,
     supabase
       .from("clients")
       .select("id,name")
       .is("deleted_at", null)
       .order("name"),
+    supabase
+      .from("project_annual_costs")
+      .select("project_id,year,usd_total")
+      .in("year", [THIS_YEAR, THIS_YEAR + 1]),
   ]);
+
+  const costByProject = new Map<string, Record<number, number>>();
+  for (const row of annual ?? []) {
+    const entry = costByProject.get(row.project_id) ?? {};
+    entry[row.year] = Number(row.usd_total);
+    costByProject.set(row.project_id, entry);
+  }
+
+  const shown = new Set((projects ?? []).map((p) => p.id));
+  const totals = (annual ?? [])
+    .filter((r) => shown.has(r.project_id))
+    .reduce<Record<number, number>>((acc, r) => {
+      acc[r.year] = (acc[r.year] ?? 0) + Number(r.usd_total);
+      return acc;
+    }, {});
+
+  const usd = (n: number | undefined) =>
+    n === undefined || n === 0
+      ? "—"
+      : n.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 
   return (
     <div>
@@ -90,6 +117,12 @@ export default async function ProyectosPage({
                 <th className="px-4 py-3 font-medium">Cliente</th>
                 <th className="px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  {THIS_YEAR} <span className="normal-case">USD</span>
+                </th>
+                <th className="px-4 py-3 text-right font-medium">
+                  {THIS_YEAR + 1} <span className="normal-case">USD</span>
+                </th>
                 <th className="px-4 py-3 font-medium">Links</th>
               </tr>
             </thead>
@@ -100,6 +133,7 @@ export default async function ProyectosPage({
                   | { name: string }[]
                   | null;
                 const clientName = Array.isArray(rel) ? rel[0]?.name : rel?.name;
+                const costs = costByProject.get(p.id) ?? {};
                 return (
                 <tr key={p.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">
@@ -113,6 +147,12 @@ export default async function ProyectosPage({
                     <span className="rounded-full bg-ink-3 px-2.5 py-0.5 text-xs text-cream">
                       {p.status.replace("_", " ")}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-accent">
+                    {usd(costs[THIS_YEAR])}
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-accent">
+                    {usd(costs[THIS_YEAR + 1])}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {p.production_url && (
@@ -144,12 +184,28 @@ export default async function ProyectosPage({
               })}
               {(projects ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted">
                     Sin proyectos {status ? "con ese estado" : "todavía"}.
                   </td>
                 </tr>
               )}
             </tbody>
+            {(projects ?? []).length > 0 && (
+              <tfoot>
+                <tr className="border-t border-line-2 text-xs uppercase tracking-wide">
+                  <td colSpan={4} className="px-4 py-3 text-muted">
+                    Total costo neto
+                  </td>
+                  <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
+                    {usd(totals[THIS_YEAR])}
+                  </td>
+                  <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
+                    {usd(totals[THIS_YEAR + 1])}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
 
