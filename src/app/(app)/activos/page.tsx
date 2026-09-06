@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createAsset } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const TYPES = ["dominio", "hosting", "herramienta", "licencia", "otro"] as const;
 
@@ -189,12 +190,9 @@ export default async function ActivosPage() {
             <textarea name="notes" rows={2} className={inputCls} />
           </label>
 
-          <button
-            type="submit"
+          <SubmitButton
             className="mt-5 w-full rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-          >
-            Crear activo
-          </button>
+           pendingLabel="Creando…">Crear activo</SubmitButton>
         </form>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { runAlertScan, setAlertStatus } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 function daysTo(date: string): number {
   return Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
@@ -35,12 +36,9 @@ export default async function AlertasPage() {
           </p>
         </div>
         <form action={runAlertScan}>
-          <button
-            type="submit"
+          <SubmitButton
             className="rounded-lg border border-line-2 px-4 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            Ejecutar barrido ahora
-          </button>
+           pendingLabel="Ejecutando…">Ejecutar barrido ahora</SubmitButton>
         </form>
       </div>
 
@@ -99,18 +97,14 @@ export default async function AlertasPage() {
                   <td className="px-4 py-3 text-right text-xs">
                     {a.status === "pendiente" && (
                       <form action={setAlertStatus.bind(null, a.id, "vista")} className="inline">
-                        <button type="submit" className="text-muted hover:text-cream">
-                          Marcar vista
-                        </button>
+                        <SubmitButton className="text-muted hover:text-cream" pendingLabel="…">Marcar vista</SubmitButton>
                       </form>
                     )}
                     <form
                       action={setAlertStatus.bind(null, a.id, "resuelta")}
                       className="ml-3 inline"
                     >
-                      <button type="submit" className="text-accent hover:underline">
-                        Resolver
-                      </button>
+                      <SubmitButton className="text-accent hover:underline" pendingLabel="…">Resolver</SubmitButton>
                     </form>
                   </td>
                 </tr>

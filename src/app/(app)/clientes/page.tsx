@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createClientRecord, toggleClientStatus } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const inputCls =
   "mt-1.5 w-full rounded-lg border border-line-2 bg-ink px-3 py-2 text-sm text-cream outline-none focus:border-accent";
@@ -114,12 +115,9 @@ export default async function ClientesPage() {
             <textarea name="notes" rows={2} className={inputCls} />
           </label>
 
-          <button
-            type="submit"
+          <SubmitButton
             className="mt-5 w-full rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-          >
-            Crear cliente
-          </button>
+           pendingLabel="Creando…">Crear cliente</SubmitButton>
         </form>
       </div>
     </div>

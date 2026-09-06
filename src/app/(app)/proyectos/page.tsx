@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createProject } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
   "presupuestado",
@@ -214,12 +215,9 @@ export default async function ProyectosPage({
             <textarea name="description" rows={2} className={inputCls} />
           </label>
 
-          <button
-            type="submit"
+          <SubmitButton
             className="mt-5 w-full rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink transition-opacity hover:opacity-90"
-          >
-            Crear proyecto
-          </button>
+           pendingLabel="Creando…">Crear proyecto</SubmitButton>
         </form>
       </div>
     </div>

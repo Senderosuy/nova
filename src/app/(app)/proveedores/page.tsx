@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getConnector, hasCredential } from "@/lib/connectors";
 import { createProvider, updateProvider, syncProvider } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const CATEGORIES = [
   "dominios",
@@ -171,12 +172,9 @@ export default async function ProveedoresPage({
                       <div className="shrink-0">
                         {connector && ready ? (
                           <form action={syncProvider.bind(null, p.id)}>
-                            <button
-                              type="submit"
+                            <SubmitButton
                               className="rounded-lg border border-accent/40 bg-accent-dim px-3 py-1.5 font-display text-xs font-semibold text-accent hover:border-accent"
-                            >
-                              Sincronizar
-                            </button>
+                             pendingLabel="Sincronizando…">Sincronizar</SubmitButton>
                           </form>
                         ) : (
                           <span
@@ -249,12 +247,9 @@ export default async function ProveedoresPage({
                         className={inputCls}
                       />
                     </label>
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="mt-1 rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink hover:opacity-90 sm:col-span-2"
-                    >
-                      Guardar condiciones
-                    </button>
+                     pendingLabel="Guardando…">Guardar condiciones</SubmitButton>
                   </form>
                 </details>
               </div>
@@ -328,12 +323,9 @@ export default async function ProveedoresPage({
             </select>
           </label>
 
-          <button
-            type="submit"
+          <SubmitButton
             className="mt-5 w-full rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink hover:opacity-90"
-          >
-            Crear proveedor
-          </button>
+           pendingLabel="Creando…">Crear proveedor</SubmitButton>
         </form>
       </div>
     </div>

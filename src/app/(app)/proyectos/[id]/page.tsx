@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { assignAsset, unassignAsset, updateProjectStatus } from "./actions";
+import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
   "presupuestado",
@@ -121,12 +122,9 @@ export default async function ProyectoDetailPage({
               </option>
             ))}
           </select>
-          <button
-            type="submit"
+          <SubmitButton
             className="rounded-lg border border-line-2 px-3 py-2 text-sm text-muted hover:border-accent hover:text-accent"
-          >
-            Cambiar
-          </button>
+           pendingLabel="Cambiando…">Cambiar</SubmitButton>
         </form>
       </div>
 
@@ -172,12 +170,9 @@ export default async function ProyectoDetailPage({
                     </option>
                   ))}
                 </select>
-                <button
-                  type="submit"
+                <SubmitButton
                   className="rounded-lg bg-accent px-3 py-2 font-display text-sm font-semibold text-ink hover:opacity-90"
-                >
-                  Asignar
-                </button>
+                 pendingLabel="Asignando…">Asignar</SubmitButton>
               </form>
             </div>
 
@@ -212,13 +207,10 @@ export default async function ProyectoDetailPage({
                       </span>
                     </div>
                     <form action={unassignAsset.bind(null, project.id, a.id)}>
-                      <button
-                        type="submit"
+                      <SubmitButton
                         className="text-xs text-muted hover:text-violet"
                         title="Finaliza la asignación (el activo sigue en inventario)"
-                      >
-                        Desasignar
-                      </button>
+                       pendingLabel="Quitando…">Desasignar</SubmitButton>
                     </form>
                   </li>
                 );
