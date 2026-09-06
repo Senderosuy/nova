@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createClientRecord, toggleClientStatus } from "./actions";
@@ -18,11 +19,15 @@ export default async function ClientesPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
+  const { data: summaries } = await supabase.from("client_summary").select("*");
+
   const { data: clients } = await supabase
     .from("clients")
     .select("id,name,kind,contact_name,contact_email,contact_phone,status")
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
+
+  const byClient = new Map((summaries ?? []).map((s) => [s.client_id, s]));
 
   const filtered = (clients ?? []).filter((c) =>
     matches(q, c.name, c.kind, c.contact_name, c.contact_email, c.contact_phone, c.status)
@@ -42,23 +47,41 @@ export default async function ClientesPage({
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="overflow-x-auto rounded-[18px] border border-line bg-ink-2">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Contacto</th>
+                <th className="px-4 py-3 text-right font-medium">Margen anual</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link href={`/clientes/${c.id}`} className="hover:text-accent">
+                      {c.name}
+                    </Link>
+                  </td>
                   <td className="hidden px-4 py-3 text-muted sm:table-cell">{c.kind}</td>
                   <td className="px-4 py-3 text-muted">
                     {c.contact_name ?? "—"}
                     {c.contact_email ? ` · ${c.contact_email}` : ""}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {(() => {
+                      const sm = byClient.get(c.id);
+                      const m = Number(sm?.margin_usd_year ?? 0);
+                      if (!sm || (Number(sm.revenue_usd_year) === 0 && Number(sm.cost_usd_year) === 0))
+                        return <span className="text-muted">—</span>;
+                      return (
+                        <span className={m >= 0 ? "text-accent" : "text-violet"}>
+                          USD {m.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <form
@@ -82,7 +105,7 @@ export default async function ClientesPage({
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted">
                     Sin clientes todavía. Cargá el primero con el formulario.
                   </td>
                 </tr>
