@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { assignAsset, unassignAsset, updateProjectStatus } from "./actions";
 import { AssetEditor } from "@/components/asset-editor";
+import { RevenuePanel } from "@/components/revenue-panel";
 import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
@@ -24,10 +25,11 @@ export default async function ProyectoDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const THIS_YEAR = new Date().getFullYear();
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -58,6 +60,24 @@ export default async function ProyectoDetailPage({
         .from("project_costs")
         .select("currency,net_monthly,net_yearly")
         .eq("project_id", id),
+      supabase
+        .from("service_schedule")
+        .select("*")
+        .eq("project_id", id),
+      supabase
+        .from("project_charges")
+        .select("id,concept,amount,currency,charge_date,billing_status")
+        .eq("project_id", id)
+        .order("charge_date", { ascending: false }),
+      supabase
+        .from("service_catalog")
+        .select("id,concept,reference_price,currency,kind")
+        .order("concept"),
+      supabase
+        .from("project_margin")
+        .select("year,revenue_usd,cost_usd,margin_usd,margin_pct")
+        .eq("project_id", id)
+        .in("year", [THIS_YEAR, THIS_YEAR + 1]),
     ]);
 
   if (!project) notFound();
@@ -133,10 +153,41 @@ export default async function ProyectoDetailPage({
       <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_360px]">
         <div>
           <div className="mb-6 rounded-[18px] border border-line bg-ink-2 p-5">
-            <div className="flex items-baseline justify-between">
-              <h2 className="font-display text-base font-semibold">Costo neto del proyecto</h2>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+              <h2 className="font-display text-base font-semibold">Resultado por año</h2>
               <span className="text-xs text-muted">interno — no se informa al cliente</span>
             </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {(margins ?? []).map((m) => (
+                <div key={m.year} className="rounded-lg border border-line bg-ink p-4">
+                  <p className="font-display text-sm font-semibold">{m.year}</p>
+                  <dl className="mt-2 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Ingreso</dt>
+                      <dd>USD {Number(m.revenue_usd).toLocaleString("es-UY")}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Costo neto</dt>
+                      <dd>USD {Number(m.cost_usd).toLocaleString("es-UY")}</dd>
+                    </div>
+                    <div className="flex justify-between border-t border-line pt-1">
+                      <dt className="font-medium">Margen</dt>
+                      <dd className={Number(m.margin_usd) >= 0 ? "font-display font-semibold text-accent" : "font-display font-semibold text-violet"}>
+                        USD {Number(m.margin_usd).toLocaleString("es-UY")}
+                        {m.margin_pct !== null && (
+                          <span className="ml-1 text-xs font-normal text-muted">
+                            {Number(m.margin_pct)}%
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-4 text-xs uppercase tracking-wide text-muted">Costo recurrente</p>
             {(costs ?? []).length === 0 ? (
               <p className="mt-3 text-sm text-muted">
                 Sin costos asociados. Asigná activos con costo o servicios recurrentes.
@@ -156,6 +207,20 @@ export default async function ProyectoDetailPage({
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mb-6">
+            <RevenuePanel
+              projectId={project.id}
+              services={(schedule ?? []) as never}
+              charges={(charges ?? []) as never}
+              assets={active.map((x) => {
+                const r = x.assets as unknown as { id: string; name: string; expires_at: string | null } | { id: string; name: string; expires_at: string | null }[] | null;
+                const one = Array.isArray(r) ? r[0] : r;
+                return { id: one?.id ?? "", name: one?.name ?? "", expires_at: one?.expires_at ?? null };
+              })}
+              catalog={catalog ?? []}
+            />
           </div>
 
           <div className="rounded-[18px] border border-line bg-ink-2">

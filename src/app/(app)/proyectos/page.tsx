@@ -50,8 +50,8 @@ export default async function ProyectosPage({
       .is("deleted_at", null)
       .order("name"),
     supabase
-      .from("project_annual_costs")
-      .select("project_id,year,usd_total")
+      .from("project_margin")
+      .select("project_id,year,revenue_usd,cost_usd,margin_usd")
       .in("year", [THIS_YEAR, THIS_YEAR + 1]),
   ]);
 
@@ -63,23 +63,33 @@ export default async function ProyectosPage({
     matches(q, p.name, p.type, p.status, p.production_url, clientNameOf(p))
   );
 
-  const costByProject = new Map<string, Record<number, number>>();
+  type Cell = { revenue: number; cost: number; margin: number };
+  const byProject = new Map<string, Record<number, Cell>>();
   for (const row of annual ?? []) {
-    const entry = costByProject.get(row.project_id) ?? {};
-    entry[row.year] = Number(row.usd_total);
-    costByProject.set(row.project_id, entry);
+    const entry = byProject.get(row.project_id) ?? {};
+    entry[row.year] = {
+      revenue: Number(row.revenue_usd),
+      cost: Number(row.cost_usd),
+      margin: Number(row.margin_usd),
+    };
+    byProject.set(row.project_id, entry);
   }
 
   const shown = new Set(filtered.map((p) => p.id));
   const totals = (annual ?? [])
     .filter((r) => shown.has(r.project_id))
-    .reduce<Record<number, number>>((acc, r) => {
-      acc[r.year] = (acc[r.year] ?? 0) + Number(r.usd_total);
+    .reduce<Record<number, Cell>>((acc, r) => {
+      const cur = acc[r.year] ?? { revenue: 0, cost: 0, margin: 0 };
+      acc[r.year] = {
+        revenue: cur.revenue + Number(r.revenue_usd),
+        cost: cur.cost + Number(r.cost_usd),
+        margin: cur.margin + Number(r.margin_usd),
+      };
       return acc;
     }, {});
 
   const usd = (n: number | undefined) =>
-    n === undefined || n === 0
+    n === undefined
       ? "—"
       : n.toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -132,10 +142,10 @@ export default async function ProyectosPage({
                 <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 text-right font-medium">
-                  {THIS_YEAR} <span className="normal-case">USD</span>
+                  {THIS_YEAR} <span className="normal-case">margen</span>
                 </th>
                 <th className="px-4 py-3 text-right font-medium">
-                  {THIS_YEAR + 1} <span className="normal-case">USD</span>
+                  {THIS_YEAR + 1} <span className="normal-case">margen</span>
                 </th>
                 <th className="hidden sm:table-cell px-4 py-3 font-medium">Links</th>
               </tr>
@@ -147,7 +157,21 @@ export default async function ProyectosPage({
                   | { name: string }[]
                   | null;
                 const clientName = Array.isArray(rel) ? rel[0]?.name : rel?.name;
-                const costs = costByProject.get(p.id) ?? {};
+                const cells = byProject.get(p.id) ?? {};
+                const cell = (y: number) => {
+                  const c = cells[y];
+                  if (!c || (c.revenue === 0 && c.cost === 0)) return <span className="text-muted">—</span>;
+                  return (
+                    <div className="leading-tight">
+                      <p className={c.margin >= 0 ? "font-medium text-accent" : "font-medium text-violet"}>
+                        {usd(c.margin)}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {usd(c.revenue)} − {usd(c.cost)}
+                      </p>
+                    </div>
+                  );
+                };
                 return (
                 <tr key={p.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">
@@ -162,12 +186,8 @@ export default async function ProyectosPage({
                       {p.status.replace("_", " ")}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-medium text-accent">
-                    {usd(costs[THIS_YEAR])}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-accent">
-                    {usd(costs[THIS_YEAR + 1])}
-                  </td>
+                  <td className="px-4 py-3 text-right">{cell(THIS_YEAR)}</td>
+                  <td className="px-4 py-3 text-right">{cell(THIS_YEAR + 1)}</td>
                   <td className="hidden px-4 py-3 text-xs sm:table-cell">
                     {p.production_url && (
                       <a
@@ -208,13 +228,13 @@ export default async function ProyectosPage({
               <tfoot>
                 <tr className="border-t border-line-2 text-xs uppercase tracking-wide">
                   <td colSpan={4} className="px-4 py-3 text-muted">
-                    Total costo neto
+                    Margen total
                   </td>
                   <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
-                    {usd(totals[THIS_YEAR])}
+                    {usd(totals[THIS_YEAR]?.margin)}
                   </td>
                   <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
-                    {usd(totals[THIS_YEAR + 1])}
+                    {usd(totals[THIS_YEAR + 1]?.margin)}
                   </td>
                   <td />
                 </tr>
