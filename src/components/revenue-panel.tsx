@@ -317,7 +317,11 @@ export function RevenuePanel({
                 </span>
                 <span className="ml-2 text-xs text-muted">{c.charge_date}</span>
                 <Chip
-                  label={c.billing_status}
+                  label={
+                    c.billing_status === "cobrado"
+                      ? c.direction === "egreso" ? "pagado" : "cobrado"
+                      : "pendiente"
+                  }
                   tone={c.billing_status === "cobrado" ? "ok" : "idle"}
                 />
               </div>
@@ -325,13 +329,13 @@ export function RevenuePanel({
                 {c.billing_status === "pendiente" ? (
                   <form action={setChargeBilling.bind(null, projectId, c.id, "cobrado")}>
                     <SubmitButton className="text-accent hover:underline" pendingLabel="…">
-                      Marcar cobrado
+                      {c.direction === "egreso" ? "Marcar pagado" : "Marcar cobrado"}
                     </SubmitButton>
                   </form>
                 ) : (
                   <form action={setChargeBilling.bind(null, projectId, c.id, "pendiente")}>
                     <SubmitButton className="text-muted hover:text-cream" pendingLabel="…">
-                      Deshacer
+                      {c.direction === "egreso" ? "Marcar impago" : "Marcar no cobrado"}
                     </SubmitButton>
                   </form>
                 )}
