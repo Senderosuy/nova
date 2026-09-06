@@ -101,7 +101,11 @@ export default async function ProyectosPage({
                 const clientName = Array.isArray(rel) ? rel[0]?.name : rel?.name;
                 return (
                 <tr key={p.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-medium">{p.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link href={`/proyectos/${p.id}`} className="hover:text-accent">
+                      {p.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-muted">{clientName ?? "—"}</td>
                   <td className="px-4 py-3 text-muted">{p.type}</td>
                   <td className="px-4 py-3">
