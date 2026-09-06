@@ -1,0 +1,11 @@
+{
+  "agent": "Cristian_Safie@DESKTOP-O6SE86I",
+  "task": "actualizar SPEC con ingresos, finanzas y proyectos propios",
+  "paths": [
+    "docs",
+    ".agent"
+  ],
+  "since": "2026-09-06T18:25:16.619Z",
+  "heartbeat": "2026-09-06T18:25:16.620Z",
+  "branch": "main"
+}

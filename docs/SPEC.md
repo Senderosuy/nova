@@ -2,23 +2,23 @@
 
 > **Documento de referencia único.** Si vas a tocar el código, leé esto primero.
 > Evita tener que reconstruir la lógica leyendo archivos sueltos.
-> Última actualización: 2026-09-06
+> Última actualización: 2026-09-07
 
 ---
 
 ## 1. Qué es y qué no es
 
 **Nova Tech Hub** es el sistema nervioso interno de **Latam Nova Group System**: memoria
-técnica de proyectos, catálogo de activos tecnológicos, condiciones con proveedores,
-costeo neto y motor de alertas de vencimientos.
+técnica de proyectos, catálogo de activos, condiciones con proveedores, costeo neto,
+ingresos, margen por proyecto, finanzas de la empresa y motor de alertas.
 
-**NO es** un CRM (sin pipeline ni leads), **NO es** un ERP (sin contabilidad ni
-facturación fiscal), **NO es** un gestor de tareas, **NO es** un portal de clientes.
-Toda feature nueva se contrasta contra esta frontera antes de entrar al backlog.
+**NO es** un CRM (sin pipeline ni leads), **NO es** un ERP ni un sistema contable
+(sin facturación fiscal, IVA, conciliación bancaria ni plan de cuentas), **NO es** un
+gestor de tareas, **NO es** un portal de clientes. Responde *"¿cómo venimos?"*, no
+reemplaza al contador. Toda feature nueva se contrasta contra esta frontera.
 
-**Regla de negocio transversal:** los costos almacenados son **netos de Nova** y son
-información interna. Nunca se exponen al cliente. El precio al cliente vive en un campo
-distinto (`recurring_services.amount`).
+**Regla transversal:** los costos netos son **información interna**. Nunca se exponen al
+cliente. El precio al cliente vive en un campo distinto del costo.
 
 ## 2. Stack y despliegue
 
@@ -31,14 +31,16 @@ distinto (`recurring_services.amount`).
 | Repo | https://github.com/Senderosuy/nova |
 | Proyecto Supabase | ref `swsdfrkkzrswjnliihxt` (West US Oregon) |
 
-**Convención crítica de Next 16:** el middleware se llama **`src/proxy.ts`** y exporta
-`proxy()`, no `middleware()`. La documentación oficial está embebida en
-`node_modules/next/dist/docs/` — consultarla ante dudas de API.
+**Convención crítica de Next 16:** el middleware es **`src/proxy.ts`** y exporta
+`proxy()`, no `middleware()`. Documentación embebida en `node_modules/next/dist/docs/`.
 
-**Frontera cliente/servidor:** la lógica pura reutilizable va en `src/lib/`, sin
-directiva. Los componentes con `"use client"` solo contienen UI. Un helper exportado
-desde un archivo `"use client"` **no puede invocarse desde un Server Component** (error
-en runtime, no en build). Ya nos pasó con `matches()`.
+**Frontera cliente/servidor:** la lógica pura va en `src/lib/`, sin directiva. Un helper
+exportado desde un archivo `"use client"` **no puede invocarse desde un Server Component**
+— falla en runtime, no en build. Ya pasó con `matches()`.
+
+**Vistas de Postgres:** `create or replace view` **no permite intercalar columnas nuevas
+en el medio**. Las columnas agregadas van al final, o hay drop + recreate en cascada.
+Ya pasó con `service_schedule`.
 
 ### Variables de entorno
 
@@ -46,11 +48,11 @@ en runtime, no en build). Ya nos pasó con `matches()`.
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | cliente y servidor | pública |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | cliente y servidor | pública |
-| `HOSTINGER_API_TOKEN` | conector Hostinger | **secreta**, solo servidor |
-| `CLOUDFLARE_API_TOKEN` | conector Cloudflare | **secreta**, solo servidor |
+| `HOSTINGER_API_TOKEN` | conector Hostinger | **secreta** |
+| `CLOUDFLARE_API_TOKEN` | conector Cloudflare | **secreta** |
 
-En Vercel, las `NEXT_PUBLIC_*` deben cargarse con `--no-sensitive --visibility config`;
-las secretas con `--sensitive`. Nunca imprimir valores en chat, logs ni commits.
+En Vercel: las `NEXT_PUBLIC_*` con `--no-sensitive --visibility config`; las secretas con
+`--sensitive`. Nunca imprimir valores en chat, logs ni commits.
 
 ## 3. Modelo de datos
 
@@ -60,184 +62,197 @@ las secretas con `--sensitive`. Nunca imprimir valores en chat, logs ni commits.
 |---|---|
 | `profiles` | usuarios internos + rol (`admin` / `operador` / `lectura`) |
 | `clients` | clientes (interno/externo) |
-| `projects` | proyectos por cliente |
-| `project_tech_profiles` | Ficha Técnica 360 (1:1 con proyecto) — **sin UI todavía** |
+| `projects` | proyectos, con `ownership_type`: de cliente o **producto propio** |
+| `project_tech_profiles` | Ficha Técnica 360 — **sin UI todavía** |
 | `providers` | a quién le contratamos y en qué condiciones |
-| `assets` | activos de Nova (dominios, hosting, herramientas, licencias) |
-| `asset_assignments` | vínculo activo ↔ proyecto (N:M, con vigencia) |
-| `recurring_services` | servicios recurrentes con costo neto y precio al cliente |
-| `alerts` | alertas de vencimiento generadas |
-| `project_events` | historial/timeline por proyecto |
-| `documents` | metadatos de archivos (Storage) — **sin UI todavía** |
-| `app_settings` | configuración (hoy: `usd_uyu_rate`) |
+| `assets` | activos (dominios, hosting, herramientas, licencias) |
+| `asset_assignments` | activo ↔ proyecto (N:M, con vigencia) |
+| `recurring_services` | ítems recurrentes: ingresos y egresos, de proyecto o empresa |
+| `project_charges` | movimientos únicos: ingresos y egresos, de proyecto o empresa |
+| `service_catalog` | precios de referencia (anualidad landing = USD 160) |
+| `payment_methods` | medios de pago de Nova |
+| `expense_categories` | categorías de gasto de estructura |
+| `alerts` | alertas generadas |
+| `project_events` | historial por proyecto |
+| `documents` | metadatos de archivos — **sin UI todavía** |
+| `app_settings` | configuración (`usd_uyu_rate` = 40,243) |
+
+### Los dos ejes de todo movimiento
+
+Cada movimiento —único o recurrente— se clasifica por:
+
+- **`direction`**: `ingreso` o `egreso`
+- **`scope`**: `proyecto` o `empresa` (overhead)
+
+Los cuatro cuadrantes usan la misma maquinaria de ciclos, monedas y proyección. Un gasto
+de contador es *egreso + empresa*; el abono de un cliente, *ingreso + proyecto*. **Se
+generalizó en vez de duplicar tablas**: por eso `project_charges` y `recurring_services`
+sirven para ambos alcances y `project_id` es opcional.
 
 ### Decisiones estructurales
 
-1. **Los activos viven separados de los proyectos.** Se vinculan por
-   `asset_assignments` con `assigned_from` / `assigned_until`. Desasignar **no borra**:
-   cierra la vigencia. Así se sabe qué es de Nova aunque el proyecto termine.
-2. **Cobro ≠ vencimiento.** `recurring_services` tiene `next_billing_date` (ingreso) y
-   `expires_at` (riesgo de caída de servicio). Son flujos distintos.
-3. **Costo neto vs precio al cliente.** `assets.cost` y `recurring_services.net_cost`
-   son internos; `recurring_services.amount` es lo que se factura.
-4. **Soft-delete** (`deleted_at`) en clients, projects y assets. La memoria se archiva,
-   no se borra.
-5. **Las credenciales no se almacenan.** `project_tech_profiles.credentials_location`
-   guarda *dónde* están y quién tiene acceso, nunca el secreto.
+1. **Activos separados de proyectos**, vinculados por `asset_assignments` con vigencia.
+   Desasignar cierra la vigencia, no borra.
+2. **Cobro ≠ vencimiento**: `next_billing_date` (ingreso) y `expires_at` (riesgo de caída).
+3. **Costo neto vs precio al cliente**: campos distintos, el primero interno.
+4. **Soft-delete** en clients, projects, assets y providers. La memoria se archiva.
+5. **Credenciales no se almacenan**: se guarda *dónde* están.
+6. **Métodos de pago: solo últimos cuatro dígitos.** Nunca el número completo, CVV ni
+   vencimiento. Validado por constraint (`^[0-9]{4}$`) y en el formulario.
+7. **Un gasto puntual no es un activo.** Activo = se posee y se renueva. Cargo único =
+   ya ocurrió y no se repite (un stand, una compra de imágenes).
 
-### Ciclos de facturación (`billing_cycle` / `frequency`)
+### Ciclos
 
 `mensual` · `trimestral` · `semestral` · `anual` · `unico` · `gratis`
 
-- `unico`: se paga una vez. Usa `assets.paid_at` para saber en qué año impacta.
-- `gratis`: inventariado pero con costo 0 (ej. zonas Cloudflare Free).
+- `unico`: usa `assets.paid_at` o `charge_date` para saber en qué año impacta.
+- `gratis`: inventariado con costo 0 (zonas Cloudflare Free).
 
-## 4. Lógica de costeo
+## 4. Lógica financiera
 
-Dos vistas, con propósitos distintos:
+### Costeo
 
-### `project_costs` — run rate
-Costo mensual y anual **normalizado**, agrupado por moneda (no mezcla USD con UYU).
-Responde "¿cuánto cuesta sostener esto por mes?".
-Divide el costo por el ciclo: anual/12, trimestral/3, etc. Los ciclos `unico` y
-`gratis` aportan 0.
+- **`project_costs`** — run rate: costo normalizado mensual/anual por moneda.
+- **`project_annual_costs`** — año calendario en USD. **No prorratea**: `payments_in_year()`
+  proyecta las fechas de pago desde la renovación y cuenta las que caen en el año. Un VPS
+  bianual que vence en 2028 tiene pago en 2026 y 2028, **cero en 2027**.
 
-### `project_annual_costs` — año calendario en USD
-Responde "¿cuánto voy a pagar en 2026? ¿y en 2027?".
-**No prorratea.** La función `payments_in_year(anchor, cycle, year)` proyecta las fechas
-de pago hacia atrás y adelante desde la fecha de renovación y **cuenta cuántas caen
-dentro del año**. Consecuencias:
-- Un VPS bianual que vence en 2028 tiene pago en 2026 y 2028, **cero en 2027**.
-- Un pago único impacta solo el año de `paid_at`.
-- Los UYU se convierten con `app_settings.usd_uyu_rate` (editable, hoy 40,243 — BCU
-  cierre 04/09/2026).
+### Ingresos
 
-Los años mostrados en la UI se derivan de la fecha actual: no hay años hardcodeados.
+- **`project_annual_revenue`** — cargos únicos del año + recurrentes proyectados.
+- **`project_margin`** — ingreso − costo, con porcentaje.
+- **`project_line_items`** — desglose línea por línea normalizado a base anual en USD,
+  con margen por ítem. Responde "¿qué me cuesta y qué cobro por cada cosa?".
+- **`client_line_items`** — lo mismo consolidado por cliente (sin pantalla todavía).
+
+### Modalidad de cobro
+
+`billing_mode`: **adelantado** (se cobra el período que empieza) o **vencido** (se cobra
+el transcurrido; el primer cobro cae una renovación después). `payments_in_year_from()`
+ignora los cobros previos al primer cobro efectivo.
+
+**Origen real:** las landings existentes no cobraron el primer año, así que su anualidad
+se cobra en 2027. Sin esto el margen de 2026 mostraría un ingreso inexistente.
+
+### Anualidades ancladas
+
+Un ítem recurrente puede tener **`anchor_asset_id`**: su fecha se deriva del vencimiento
+del activo. `confirm_by = expires_at − lead_days` (45 por defecto). Cuando el conector
+trae la renovación nueva, la fecha de confirmación se recalcula sola.
+
+### Proyectos propios
+
+`ownership_type = 'propio'` cambia la lectura: el costo no es un problema sino
+**inversión**. `project_investment` da invertido total, invertido del año, recuperado y
+posición neta, contando **solo movimientos ya ocurridos**. Fotolink es el primer caso.
+
+### Finanzas de empresa
+
+- **`cash_movements`** — unifica únicos, recurrentes proyectados y costos de activos:
+  un renglón por ocurrencia con su fecha real.
+- **`finance_monthly` / `finance_yearly`** — resultado con el **overhead separado** del
+  costo de proyectos.
+- **`spend_by_payment_method`** — qué se paga con cada tarjeta o cuenta.
+- **`spend_by_category`** — en qué se va la estructura.
 
 ## 5. Motor de alertas
 
-`generate_alerts()` recorre los umbrales **90, 60, 30 y 15 días** y crea alertas para
-activos y servicios cuya fecha caiga dentro de cada ventana.
+`generate_alerts()` recorre los umbrales **90, 60, 30, 15 días**. Cron
+`nova-alerts-daily`, `0 9 * * *` UTC (06:00 Uruguay).
 
-- **Idempotencia por índice único:** `(asset_id, threshold_days, due_date)` y
-  `(service_id, threshold_days, due_date)`. Correr el barrido dos veces no duplica.
-  Verificado: 1ª corrida genera N, 2ª genera 0.
-- **Cron:** `nova-alerts-daily`, `0 9 * * *` UTC (06:00 Uruguay) vía `pg_cron`.
-- **Estados:** `pendiente` → `vista` → `resuelta`, o `pospuesta` con nueva fecha.
-- Cada alerta nace con `suggested_action` en lenguaje natural.
-- **Métrica de éxito del sistema entero:** vencimientos que sorprendieron a Nova = 0.
+**Cadena de renovación**, en orden causal:
+
+1. **Confirmar** con el cliente (`confirm_by`) — solo ingresos de ciclo **anual o
+   semestral**: pedir confirmación con 45 días para un servicio mensual generaba alertas
+   permanentemente vencidas.
+2. **Cobrar** — solo si ya confirmó y no se cobró.
+3. **Renovar** — la alerta del activo.
+
+Si el cliente **rechaza**, un trigger cierra las alertas abiertas del servicio: no tiene
+sentido avisar de renovar algo que se da de baja.
+
+**Idempotencia por índice único**: `(asset_id, threshold, due_date)` y
+`(service_id, threshold, due_date, service_stage)`. Verificado: 2ª corrida genera 0.
 
 ## 6. Seguridad y RLS
 
-RLS habilitado en **todas** las tablas. Patrón uniforme:
+RLS en todas las tablas. SELECT: cualquier autenticado. INSERT/UPDATE: `can_write()`
+(admin u operador). DELETE: `is_admin()`. Anónimos sin acceso. Las funciones son
+`security definer` para evitar recursión al consultar `profiles` desde una política.
 
-| Operación | Quién |
-|---|---|
-| SELECT | cualquier autenticado |
-| INSERT / UPDATE | `admin` u `operador` (función `can_write()`) |
-| DELETE | solo `admin` (función `is_admin()`) |
-| anónimo | sin acceso |
+**Limitación conocida:** todos los roles ven todo, incluidos costos netos y finanzas. No
+hay segmentación por proyecto ni ocultamiento de información sensible.
 
-`can_write()` e `is_admin()` son `security definer` para evitar recursión de políticas
-al consultar `profiles` desde dentro de una política.
-
-Alta automática de perfil: trigger `on_auth_user_created` sobre `auth.users`.
+**Alta de usuarios:** se crea en el dashboard de Supabase (Authentication → Users, con
+Auto Confirm) y se promueve por SQL sobre `profiles.role`. No hay pantalla de usuarios.
 
 ## 7. Integridad: anti-duplicados
 
-Defensa en dos capas, porque la UI sola no alcanza.
+**UI:** `<SubmitButton>` (`useFormStatus`) se deshabilita mientras la acción está en vuelo.
+**Base:** índices únicos parciales en projects (client+nombre), clients, assets
+(identifier), asset_assignments vigentes y recurring_services por proyecto+concepto.
 
-**Capa UI:** `<SubmitButton>` (`src/components/submit-button.tsx`) usa `useFormStatus`
-para deshabilitarse mientras la acción está en vuelo. Aplicado a los 12 formularios.
+Origen: un doble clic creó proyectos duplicados y asignó el mismo dominio dos veces.
 
-**Capa base:** índices únicos parciales (ignoran registros archivados):
-- `projects (client_id, lower(name))`
-- `clients (lower(name))`
-- `assets (lower(identifier))`
-- `asset_assignments (asset_id, project_id)` where vigente
-- `recurring_services (project_id, lower(concept))` where activo
+## 8. Conectores
 
-Origen: un doble clic creó proyectos duplicados y asignó el mismo dominio dos veces,
-inflando el costeo.
+Contrato en `src/lib/connectors/types.ts`. **Agregar un proveedor con API = crear un
+archivo + registrarlo en `index.ts` + un UPDATE en `providers`.** La UI y `syncProvider()`
+son genéricas.
 
-## 8. Arquitectura de conectores
-
-Contrato en `src/lib/connectors/types.ts`:
-
-```ts
-type ProviderConnector = {
-  key: string;              // = providers.integration_key
-  label: string;
-  envVar: string | null;    // credencial server-side
-  capabilities: string[];
-  sync: (supabase, providerId) => Promise<SyncResult>;
-};
-```
-
-**Agregar un proveedor con API = crear un archivo + registrarlo en `index.ts` + un
-UPDATE en `providers`.** La UI y la server action `syncProvider()` son genéricas: no
-conocen ningún proveedor por nombre.
-
-Estado por proveedor en `providers.integration_status`:
-`sin_api` · `disponible` (falta credencial) · `conectada` · `error`.
-Cada sync guarda `last_synced_at` y `last_sync_result`.
-
-### Estado de las integraciones
-
-| Proveedor | Conector | Estado | Notas |
-|---|---|---|---|
-| Hostinger | ✅ | conectada | dominios + **precios reales** de `/billing/v1/subscriptions` |
-| Cloudflare | ✅ | credencial cargada | **falta permiso `Zone:Read` y `Domain Registrar:Read`** en el token |
-| Google Workspace | ❌ | sin conector | no hay API de facturación para clientes directos |
-| nic.com.uy | ❌ | sin API | ANTEL no expone API; queda WHOIS `whois.nic.org.uy` |
+| Proveedor | Estado | Qué trae |
+|---|---|---|
+| Hostinger | ✅ conectada | dominios, vencimientos, **precios reales** de `/billing/v1/subscriptions` |
+| Cloudflare | ✅ conectada | dominios del registrador con vencimiento y autorrenovación, + zonas DNS |
+| Google Workspace | ❌ sin conector | no hay API de facturación para clientes directos |
+| nic.com.uy | ❌ sin API | ANTEL no expone API; queda WHOIS `whois.nic.org.uy` |
 
 **Aprendizajes de API:**
-- Los **tokens de cuenta** de Cloudflare dan 401 contra `/user/tokens/verify` aunque
-  sean válidos. Verificar contra `/accounts` o `/zones`.
+- Los **tokens de cuenta** de Cloudflare dan 401 contra `/user/tokens/verify` aunque sean
+  válidos. Verificar contra `/accounts` o `/zones`.
 - Cloudflare devuelve **lista vacía sin error** cuando falta un permiso. Un `[]` no
-  significa "no hay datos".
+  significa "no hay datos". El permiso de zona necesita **su propia política** con alcance
+  "All zones from an account": no aparece bajo "Entire Account".
 - Hostinger no vincula suscripción con dominio: el precio se deriva **por TLD**.
-- Google Workspace: Cloud Billing API es solo GCP; Reseller API es solo para
-  revendedores. La vía práctica sería importar el CSV de factura.
+- Google: Cloud Billing API es solo GCP; Reseller API solo para revendedores. La vía
+  práctica sería importar el CSV de factura.
 
-## 9. Estado de datos (2026-09-06)
+## 9. Estado de datos (2026-09-07)
 
-- **5 clientes**, **5 proyectos**, **28 activos**, **5 proveedores**
-- nic.com.uy: 18 dominios `.uy` a $948 UYU/año c/u = **$17.064 UYU/año**
+- 5 clientes, 5 proyectos (Fotolink marcado **propio**), ~30 activos, 5 proveedores
+- nic.com.uy: 18 dominios `.uy` a $948 UYU/año = **$17.064 UYU/año**
 - Hostinger: 12 ítems = **USD 792,24/año** (incluye VPS KVM 4 a USD 347,88/año)
-- Cloudflare: 1 dominio (fotolinkmedia.com, USD 10,46/año) + zona DNS Free
-- Google: fotolink.app (USD 14/año) + Workspace Business Standard (USD 12,60/mes)
-- PHOS: stand USD 500, pago único 01/09/2026
-- **0 alertas abiertas** — el primer vencimiento es el 22/01/2027
+- Cloudflare: fotolinkmedia.com USD 10,46/año, autorrenovación activa
+- Fotolink: **USD 841 invertidos**, sin retorno todavía
+- 0 alertas abiertas — el primer vencimiento es el 22/01/2027
+- **0 métodos de pago cargados** y **0 gastos de estructura**: hasta que se carguen, los
+  reportes por medio de pago y el overhead están vacíos
+- 4 cargos "Desarrollo de landing" en USD 0 pendientes de completar o borrar
 
-**Dato de negocio:** Cloudflare Registrar (USD 10,46) es la mitad de precio que
-Hostinger (USD 20,19) para un `.com`. Hay 5 `.com` en Hostinger migrables al vencer.
+**Dato de negocio:** Cloudflare Registrar (USD 10,46) cuesta la mitad que Hostinger
+(USD 20,19) para un `.com`. Hay 5 `.com` en Hostinger migrables al vencer.
 
 ## 10. Roadmap
 
 ### Hecho
-- Etapa 0 — definición y frontera de producto
-- Etapa 1 — auth, layout, CRUD clientes y proyectos, dashboard
-- Etapa 3 — catálogo de activos + asignaciones
-- Etapa 5 — motor de alertas con cron
-- Etapa 6 — historial automático por triggers
-- Extras — proveedores con condiciones de pago, costeo neto, conectores API,
-  búsqueda en 5 pantallas, anti-duplicados
+Etapas 0, 1, 3, 5, 6 del plan original, más: proveedores con condiciones, costeo neto,
+conectores API, búsqueda, anti-duplicados, responsive, eje de ingresos completo
+(catálogo, cargos, anualidades ancladas, doble estado confirmación/cobro), finanzas de
+empresa con métodos de pago y categorías, desglose línea por línea, proyectos propios.
 
 ### Pendiente
-- **Etapa 2 — Ficha Técnica 360**: tabla `project_tech_profiles` existe, falta UI.
-  Es el pilar de memoria: "cómo está hecho y qué necesito para continuarlo".
-- **Etapa 4 — UI de servicios recurrentes**: la tabla existe, se cargan por SQL.
-- Notificación por email de alertas (hoy hay que entrar a verlas)
-- Etapa 7 — automatizaciones y escalamiento
-- Etapa 8 — capa de IA (RAG sobre fichas, activos e historial)
-- Etapa 9 — dashboard ejecutivo
+- **Ficha Técnica 360** (Etapa 2): tabla existe, falta UI. Pilar de memoria.
+- Notificación por email de alertas
+- Refresco WHOIS para los 18 dominios `.uy`
 - Conector Google Workspace vía Admin SDK (conteo de licencias)
-- Refresco WHOIS para dominios `.uy`
+- Pantalla consolidada por cliente (`client_line_items` ya existe)
+- Pantalla de usuarios y roles
+- Etapas 7, 8, 9: automatizaciones, capa de IA, dashboard ejecutivo
 
 ## 11. Identidad visual
 
-Tokens extraídos de `latamnova.app` (`src/app/globals.css`). **No inventar colores.**
+Tokens de `latamnova.app` en `src/app/globals.css`. **No inventar colores.**
 
 ```
 --ink #05070f   --ink-2 #0a0e1e   --ink-3 #10162e
@@ -246,26 +261,27 @@ Tokens extraídos de `latamnova.app` (`src/app/globals.css`). **No inventar colo
 Display: Space Grotesk · Body: Inter · Radio: 18px
 ```
 
-Convenciones de UI: tablas en tarjetas `rounded-[18px] border-line bg-ink-2`,
-formulario de alta en columna derecha de 320px, chips de filtro redondeados,
-badges de vencimiento (violeta ≤30 d, cyan ≤90 d, gris resto).
+Convenciones: tarjetas `rounded-[18px] border-line bg-ink-2`, formulario de alta en
+columna derecha, chips de filtro redondeados, violeta para lo negativo o riesgoso, cyan
+para lo positivo. Verbos según dirección: un egreso se **paga**, un ingreso se **cobra**.
+
+Nav lateral fija en escritorio; bajo `lg` es barra superior con menú desplegable. Tablas
+con `overflow-x-auto` y ancho mínimo; columnas secundarias ocultas en móvil.
 
 ## 12. Comandos habituales
 
 ```bash
-# Desarrollo
 npm run dev
 npm run build                      # verificar antes de commitear
 
-# Base de datos (nunca tocar el schema desde el dashboard)
 npx supabase migration new <nombre>
 npx supabase db push
 npx supabase db query --linked --file <archivo.sql>
 
-# Despliegue
 git push                           # deploy automático
-npx -y vercel logs <url>           # diagnóstico de errores en runtime
+npx -y vercel logs <url>           # errores de runtime
+
+npm run agent:status               # ¿hay otro agente trabajando?
 ```
 
-**Regla:** todo cambio de esquema es una migración versionada en `supabase/migrations/`.
-Nunca editar el schema desde el dashboard de Supabase.
+**Regla:** todo cambio de esquema es una migración versionada. Nunca desde el dashboard.

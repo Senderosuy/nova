@@ -12,6 +12,25 @@ Formato:
 
 ---
 
+## 2026-09-07 — claude-opus
+
+- **Cloudflare quedó conectado del todo.** El token tiene tres políticas: zonas
+  (Zone Read, alcance "All zones from an account"), cuenta (Registrar Domains Read) y
+  las originales. Sin la política de zonas separada, `/zones` devolvía `[]` sin error.
+  El conector ahora lee registrador + zonas y evita duplicar un dominio que tenga ambos.
+- **Pendiente de carga del usuario, bloquea reportes:** 0 métodos de pago y 0 gastos de
+  estructura. Hasta que existan, "Gasto por método de pago" y el overhead en Finanzas
+  están vacíos, y 32 activos no tienen medio de pago asociado.
+- **4 cargos "Desarrollo de landing" en USD 0** repartidos entre proyectos: completar el
+  importe o borrarlos, hoy no computan ingreso.
+- **Ficha Técnica 360 sigue sin UI.** Es lo único del plan maestro original que nunca se
+  construyó y es el pilar de memoria del producto. Siguiente en la fila.
+- **Trampa de Postgres:** `create or replace view` no deja intercalar columnas nuevas en
+  el medio (error 42P16). Agregarlas al final o hacer drop+recreate en cascada.
+- **Ojo con los reemplazos por script** sobre JSX ya modificado: varias veces el patrón
+  buscado había cambiado y el cierre `</div>` no se insertó, rompiendo el build. Si
+  automatizás ediciones, verificá con `npm run build` inmediatamente después.
+
 ## 2026-09-06 — claude-opus (sesión inicial)
 
 - **Pendiente de acción humana:** al token de Cloudflare le faltan los permisos
