@@ -291,6 +291,7 @@ export default async function SociosPage() {
                       <select name="currency" defaultValue="USD" className={inputCls}>
                         <option value="USD">USD</option>
                         <option value="UYU">UYU</option>
+                <option value="BRL">BRL</option>
                       </select>
                     </label>
                     <label className={`${labelCls} sm:col-span-2`}>

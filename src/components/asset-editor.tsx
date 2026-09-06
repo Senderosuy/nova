@@ -122,6 +122,7 @@ export function AssetEditor({
             <select name="currency" defaultValue={asset.currency} className={inputCls}>
               <option value="USD">USD</option>
               <option value="UYU">UYU</option>
+                <option value="BRL">BRL</option>
             </select>
           </label>
 

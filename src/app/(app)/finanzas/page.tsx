@@ -339,6 +339,7 @@ export default async function FinanzasPage({
                 Moneda
                 <select name="net_currency" defaultValue="UYU" className={inputCls}>
                   <option value="UYU">UYU</option>
+                <option value="BRL">BRL</option>
                   <option value="USD">USD</option>
                 </select>
               </label>
@@ -412,6 +413,7 @@ export default async function FinanzasPage({
                 Moneda
                 <select name="currency" defaultValue="UYU" className={inputCls}>
                   <option value="UYU">UYU</option>
+                <option value="BRL">BRL</option>
                   <option value="USD">USD</option>
                 </select>
               </label>

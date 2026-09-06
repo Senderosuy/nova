@@ -32,7 +32,7 @@ export default async function ProyectosPage({
 
   let query = supabase
     .from("projects")
-    .select("id,name,type,status,production_url,repo_url,clients(name)")
+    .select("id,name,type,status,brand,production_url,repo_url,clients(name)")
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
@@ -42,7 +42,7 @@ export default async function ProyectosPage({
 
   const THIS_YEAR = new Date().getFullYear();
 
-  const [{ data: projects }, { data: clients }, { data: techStatus }, { data: annual }] = await Promise.all([
+  const [{ data: projects }, { data: clients }, { data: techStatus }, { data: brandRows }, { data: annual }] = await Promise.all([
     query,
     supabase
       .from("clients")
@@ -50,6 +50,7 @@ export default async function ProyectosPage({
       .is("deleted_at", null)
       .order("name"),
     supabase.from("project_tech_status").select("project_id,completeness_pct,has_doc"),
+    supabase.from("projects").select("brand").not("brand", "is", null).is("deleted_at", null),
     supabase
       .from("project_margin")
       .select("project_id,year,revenue_usd,cost_usd,margin_usd")
@@ -75,6 +76,8 @@ export default async function ProyectosPage({
     };
     byProject.set(row.project_id, entry);
   }
+
+  const brands = [...new Set((brandRows ?? []).map((b) => b.brand as string))].sort();
 
   const techByProject = new Map(
     (techStatus ?? []).map((t) => [
@@ -189,6 +192,7 @@ export default async function ProyectosPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-muted">{clientName ?? "—"}</td>
+                  <td className="hidden px-4 py-3 text-muted sm:table-cell">{p.brand ?? "—"}</td>
                   <td className="hidden px-4 py-3 text-muted sm:table-cell">{p.type}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-ink-3 px-2.5 py-0.5 text-xs text-cream">
@@ -250,7 +254,7 @@ export default async function ProyectosPage({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={9} className="px-4 py-8 text-center text-muted">
                     Sin proyectos {status ? "con ese estado" : "todavía"}.
                   </td>
                 </tr>
@@ -259,7 +263,7 @@ export default async function ProyectosPage({
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t border-line-2 text-xs uppercase tracking-wide">
-                  <td colSpan={5} className="px-4 py-3 text-muted">
+                  <td colSpan={6} className="px-4 py-3 text-muted">
                     Margen total
                   </td>
                   <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
@@ -298,6 +302,16 @@ export default async function ProyectosPage({
           <label className={`${labelCls} mt-3`}>
             Nombre *
             <input name="name" required className={inputCls} />
+          </label>
+
+          <label className={`${labelCls} mt-3`}>
+            Marca <span className="normal-case">(opcional)</span>
+            <input name="brand" list="marcas" placeholder="Senderos del Tannat" className={inputCls} />
+            <datalist id="marcas">
+              {brands.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
           </label>
 
           <label className={`${labelCls} mt-3`}>

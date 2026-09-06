@@ -100,6 +100,7 @@ export async function updateProject(
       name,
       client_id: txt("client_id"),
       type: String(formData.get("type") ?? "otro"),
+      brand: txt("brand"),
       description: txt("description"),
       production_url: txt("production_url"),
       repo_url: txt("repo_url"),

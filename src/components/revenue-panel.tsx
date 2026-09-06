@@ -235,6 +235,7 @@ export function RevenuePanel({
               <select name="currency" defaultValue="USD" className={inputCls}>
                 <option value="USD">USD</option>
                 <option value="UYU">UYU</option>
+                <option value="BRL">BRL</option>
               </select>
             </label>
 
@@ -391,6 +392,7 @@ export function RevenuePanel({
               <select name="currency" defaultValue="USD" className={inputCls}>
                 <option value="USD">USD</option>
                 <option value="UYU">UYU</option>
+                <option value="BRL">BRL</option>
               </select>
             </label>
 

@@ -12,6 +12,7 @@ export async function createProject(formData: FormData): Promise<void> {
     client_id: String(formData.get("client_id") ?? ""),
     name: String(formData.get("name") ?? "").trim(),
     type: String(formData.get("type") ?? "otro"),
+    brand: String(formData.get("brand") ?? "").trim() || null,
     status: String(formData.get("status") ?? "en_desarrollo"),
     description: String(formData.get("description") ?? "").trim() || null,
     production_url: String(formData.get("production_url") ?? "").trim() || null,

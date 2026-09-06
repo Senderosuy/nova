@@ -45,7 +45,7 @@ export default async function ProyectoDetailPage({
     await Promise.all([
       supabase
         .from("projects")
-        .select("id,name,type,status,ownership_type,client_id,description,production_url,repo_url,docs_repo,docs_path,docs_branch,docs_synced_at,docs_sync_result,clients(name)")
+        .select("id,name,type,status,ownership_type,client_id,brand,description,production_url,repo_url,docs_repo,docs_path,docs_branch,docs_synced_at,docs_sync_result,clients(name)")
         .eq("id", id)
         .is("deleted_at", null)
         .single(),
@@ -178,7 +178,8 @@ export default async function ProyectoDetailPage({
                 producto propio
               </span>
             )}
-            {clientName ?? "—"} · {project.type}
+            {clientName ?? "—"}
+            {project.brand ? " · " + project.brand : ""} · {project.type}
             {project.description ? ` · ${project.description}` : ""}
           </p>
           <p className="mt-1 space-x-3 text-xs">
@@ -262,6 +263,10 @@ export default async function ProyectoDetailPage({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted">
+            Marca
+            <input name="brand" defaultValue={project.brand ?? ""} className={inputCls} />
           </label>
           <label className="block text-xs font-medium uppercase tracking-wide text-muted">
             URL de producción
