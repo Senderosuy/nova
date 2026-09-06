@@ -39,7 +39,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: outflows }, { data: ownedMethods }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: takenAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: outflows }, { data: ownedMethods }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -56,9 +56,13 @@ export default async function ProyectoDetailPage({
         .order("assigned_from", { ascending: false }),
       supabase
         .from("assets")
-        .select("id,name,type")
+        .select("id,name,type,ownership")
         .is("deleted_at", null)
         .order("name"),
+      supabase
+        .from("asset_assignments")
+        .select("asset_id")
+        .is("assigned_until", null),
       supabase
         .from("project_events")
         .select("id,event_type,description,created_at")
@@ -150,13 +154,10 @@ export default async function ProyectoDetailPage({
   const clientName = Array.isArray(clientRel) ? clientRel[0]?.name : clientRel?.name;
 
   const active = (assignments ?? []).filter((a) => !a.assigned_until);
-  const assignedIds = new Set(
-    active.map((a) => {
-      const rel = a.assets as unknown as { id: string } | { id: string }[] | null;
-      return Array.isArray(rel) ? rel[0]?.id : rel?.id;
-    })
-  );
-  const assignable = (allAssets ?? []).filter((a) => !assignedIds.has(a.id));
+  // Un activo asignado a cualquier proyecto no vuelve a ofrecerse:
+  // el selector muestra solo lo que está libre.
+  const takenIds = new Set((takenAssets ?? []).map((t) => t.asset_id));
+  const assignable = (allAssets ?? []).filter((a) => !takenIds.has(a.id));
 
   return (
     <div>
@@ -391,8 +392,14 @@ export default async function ProyectoDetailPage({
                   {assignable.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
+                      {a.ownership === "cliente" ? " · del cliente" : ""}
                     </option>
                   ))}
+                  {assignable.length === 0 && (
+                    <option value="" disabled>
+                      Todos los activos están asignados
+                    </option>
+                  )}
                 </select>
                 <SubmitButton
                   className="rounded-lg bg-accent px-3 py-2 font-display text-sm font-semibold text-ink hover:opacity-90"
