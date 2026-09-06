@@ -61,9 +61,9 @@ export default async function ActivosPage({
 
   return (
     <div>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Activos</h1>
+          <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Activos</h1>
           <p className="mt-1 text-sm text-muted">
             {filtered.length} activo{filtered.length === 1 ? "" : "s"}
             {q ? ` de ${assets?.length ?? 0}` : " — dominios, hostings, herramientas y licencias de Nova"}.
@@ -81,13 +81,13 @@ export default async function ActivosPage({
         <SearchInput placeholder="Buscar activo, proveedor, tipo…" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
-          <table className="w-full text-sm">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="overflow-x-auto rounded-[18px] border border-line bg-ink-2">
+          <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Activo</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Proveedor</th>
                 <th className="px-4 py-3 font-medium">Costo neto</th>
                 <th className="px-4 py-3 font-medium">Vence</th>
@@ -98,7 +98,7 @@ export default async function ActivosPage({
               {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">{a.name}</td>
-                  <td className="px-4 py-3 text-muted">{a.type}</td>
+                  <td className="hidden px-4 py-3 text-muted sm:table-cell">{a.type}</td>
                   <td className="px-4 py-3 text-muted">{a.provider ?? "—"}</td>
                   <td className="px-4 py-3 text-muted">
                     {a.cost

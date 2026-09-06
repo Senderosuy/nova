@@ -54,7 +54,7 @@ export default async function ProveedoresPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Proveedores</h1>
+      <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Proveedores</h1>
       <p className="mt-1 text-sm text-muted">
         A quién le contratamos, en qué condiciones y qué nos cuesta. Los costos son netos
         de Nova — nunca se informan al cliente.
@@ -75,7 +75,7 @@ export default async function ProveedoresPage({
         <SearchInput placeholder="Buscar proveedor, categoría, forma de pago…" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-4">
           {filtered.map((p) => {
             const assets = ((p.assets ?? []) as Asset[]).filter(
@@ -89,7 +89,7 @@ export default async function ProveedoresPage({
 
             return (
               <div key={p.id} className="rounded-[18px] border border-line bg-ink-2 p-5">
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <h2 className="font-display text-base font-semibold">
                       {p.name}
@@ -134,7 +134,7 @@ export default async function ProveedoresPage({
                   const ready = connector ? hasCredential(connector) : false;
 
                   return (
-                    <div className="mt-4 flex items-start justify-between gap-4 rounded-lg border border-line bg-ink px-4 py-3">
+                    <div className="mt-4 flex flex-col gap-3 rounded-lg sm:flex-row sm:items-start sm:justify-between border border-line bg-ink px-4 py-3">
                       <div className="min-w-0">
                         <p className="text-xs font-medium uppercase tracking-wide text-muted">
                           Integración API

@@ -30,10 +30,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Dashboard</h1>
+      <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">Estado general de la operación de Nova.</p>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {cards.map((c) => (
           <Link
             key={c.label}
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
             className="rounded-[18px] border border-line bg-ink-2 p-5 transition-colors hover:border-line-2"
           >
             <p className="text-xs uppercase tracking-wide text-muted">{c.label}</p>
-            <p className="mt-2 font-display text-3xl font-semibold text-accent">
+            <p className="mt-2 font-display text-2xl sm:text-3xl font-semibold text-accent">
               {c.value}
             </p>
           </Link>

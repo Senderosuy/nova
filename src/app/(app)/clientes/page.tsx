@@ -30,7 +30,7 @@ export default async function ClientesPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Clientes</h1>
+      <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Clientes</h1>
       <p className="mt-1 text-sm text-muted">
         {filtered.length} cliente{filtered.length === 1 ? "" : "s"}
         {q ? ` de ${clients?.length ?? 0}` : " registrados"}.
@@ -40,13 +40,13 @@ export default async function ClientesPage({
         <SearchInput placeholder="Buscar cliente, contacto, email…" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
-          <table className="w-full text-sm">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="overflow-x-auto rounded-[18px] border border-line bg-ink-2">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Nombre</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Contacto</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
               </tr>
@@ -55,7 +55,7 @@ export default async function ClientesPage({
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3 text-muted">{c.kind}</td>
+                  <td className="hidden px-4 py-3 text-muted sm:table-cell">{c.kind}</td>
                   <td className="px-4 py-3 text-muted">
                     {c.contact_name ?? "—"}
                     {c.contact_email ? ` · ${c.contact_email}` : ""}

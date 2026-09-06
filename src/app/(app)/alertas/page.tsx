@@ -42,9 +42,9 @@ export default async function AlertasPage({
 
   return (
     <div>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Alertas</h1>
+          <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Alertas</h1>
           <p className="mt-1 text-sm text-muted">
             {filtered.length} abierta{filtered.length === 1 ? "" : "s"} ·{" "}
             {resolved ?? 0} resuelta{(resolved ?? 0) === 1 ? "" : "s"} · barrido automático
@@ -62,8 +62,8 @@ export default async function AlertasPage({
         <SearchInput placeholder="Buscar alerta, activo, acción…" />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[18px] border border-line bg-ink-2">
-        <table className="w-full text-sm">
+      <div className="mt-4 overflow-x-auto rounded-[18px] border border-line bg-ink-2">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
               <th className="px-4 py-3 font-medium">Acción</th>

@@ -83,9 +83,9 @@ export default async function ProyectoDetailPage({
         ← Proyectos
       </Link>
 
-      <div className="mt-2 flex items-start justify-between">
+      <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
+          <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">
             {project.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -117,7 +117,7 @@ export default async function ProyectoDetailPage({
         </div>
 
         <form action={updateProjectStatus.bind(null, project.id)} className="flex gap-2">
-          <select name="status" defaultValue={project.status} className={inputCls + " mt-0 w-44"}>
+          <select name="status" defaultValue={project.status} className={inputCls + " mt-0 w-full sm:w-44"}>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s.replace("_", " ")}
@@ -130,7 +130,7 @@ export default async function ProyectoDetailPage({
         </form>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_360px]">
         <div>
           <div className="mb-6 rounded-[18px] border border-line bg-ink-2 p-5">
             <div className="flex items-baseline justify-between">
@@ -159,10 +159,10 @@ export default async function ProyectoDetailPage({
           </div>
 
           <div className="rounded-[18px] border border-line bg-ink-2">
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+            <div className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="font-display text-base font-semibold">Activos asignados</h2>
               <form action={assignAsset.bind(null, project.id)} className="flex gap-2">
-                <select name="asset_id" className={inputCls + " mt-0 w-56"} defaultValue="">
+                <select name="asset_id" className={inputCls + " mt-0 w-full sm:w-56"} defaultValue="">
                   <option value="" disabled>
                     Asignar activo…
                   </option>
@@ -201,7 +201,7 @@ export default async function ProyectoDetailPage({
                 return (
                   <li
                     key={a.id}
-                    className="flex items-center justify-between border-b border-line px-5 py-3 text-sm last:border-0"
+                    className="flex flex-col gap-2 border-b border-line px-5 py-3 text-sm last:border-0 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
                       <span className="font-medium">{asset.name}</span>

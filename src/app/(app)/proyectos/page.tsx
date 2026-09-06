@@ -86,7 +86,7 @@ export default async function ProyectosPage({
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Proyectos</h1>
+      <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">Proyectos</h1>
       <p className="mt-1 text-sm text-muted">
         {filtered.length} proyecto{filtered.length === 1 ? "" : "s"}
         {status ? ` · filtro: ${status.replace("_", " ")}` : ""}
@@ -122,14 +122,14 @@ export default async function ProyectosPage({
         <SearchInput placeholder="Buscar proyecto, cliente, tipo…" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
-          <table className="w-full text-sm">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="overflow-x-auto rounded-[18px] border border-line bg-ink-2">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Proyecto</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 text-right font-medium">
                   {THIS_YEAR} <span className="normal-case">USD</span>
@@ -137,7 +137,7 @@ export default async function ProyectosPage({
                 <th className="px-4 py-3 text-right font-medium">
                   {THIS_YEAR + 1} <span className="normal-case">USD</span>
                 </th>
-                <th className="px-4 py-3 font-medium">Links</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium">Links</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +156,7 @@ export default async function ProyectosPage({
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-muted">{clientName ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted">{p.type}</td>
+                  <td className="hidden px-4 py-3 text-muted sm:table-cell">{p.type}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-full bg-ink-3 px-2.5 py-0.5 text-xs text-cream">
                       {p.status.replace("_", " ")}
@@ -168,7 +168,7 @@ export default async function ProyectosPage({
                   <td className="px-4 py-3 text-right font-medium text-accent">
                     {usd(costs[THIS_YEAR + 1])}
                   </td>
-                  <td className="px-4 py-3 text-xs">
+                  <td className="hidden px-4 py-3 text-xs sm:table-cell">
                     {p.production_url && (
                       <a
                         href={p.production_url}

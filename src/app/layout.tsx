@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,12 @@ export const metadata: Metadata = {
   title: "Nova Tech Hub",
   description:
     "Sistema nervioso interno de LatamNova: memoria técnica, activos, recurrencias y alertas.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#05070f",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
