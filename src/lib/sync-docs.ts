@@ -44,21 +44,16 @@ export async function syncProjectDoc(
       return { project: project.name, status: "sin_archivo", detail };
     }
 
-    const { values, matched, unknownHeadings } = parseTechDocument(file.content);
-
-    if (matched.length === 0) {
-      const detail = `El archivo no tiene secciones reconocibles. Se conservó la ficha anterior.`;
-      await supabase
-        .from("projects")
-        .update({ docs_synced_at: new Date().toISOString(), docs_sync_result: `error: ${detail}` })
-        .eq("id", project.id);
-      return { project: project.name, status: "error", detail };
-    }
+    // El documento completo es la fuente de verdad; el parseo por
+    // secciones es un extra para poder medir completitud.
+    const { values, matched } = parseTechDocument(file.content);
 
     const { error } = await supabase.from("project_tech_profiles").upsert(
       {
         project_id: project.id,
         ...values,
+        doc_content: file.content,
+        doc_fetched_at: new Date().toISOString(),
         reviewed_at: new Date().toISOString().slice(0, 10),
       },
       { onConflict: "project_id" }
@@ -66,11 +61,12 @@ export async function syncProjectDoc(
 
     if (error) throw new Error(error.message);
 
+    const kb = (file.content.length / 1024).toFixed(1);
     const detail =
-      `${matched.length} campo(s) desde ${project.docs_repo}/${path}` +
-      (unknownHeadings.length
-        ? ` · secciones ignoradas: ${unknownHeadings.slice(0, 3).join(", ")}`
-        : "");
+      `${path} leído (${kb} KB)` +
+      (matched.length
+        ? ` · ${matched.length} sección(es) reconocida(s)`
+        : " · sin secciones estándar, se muestra el documento completo");
 
     await supabase
       .from("projects")

@@ -6,6 +6,7 @@ import {
   syncDocsNow,
 } from "@/app/(app)/proyectos/[id]/tech-actions";
 import { TechImport } from "./tech-import";
+import { renderMarkdown } from "@/lib/markdown";
 
 const inputCls =
   "mt-1 w-full rounded-lg border border-line-2 bg-ink px-3 py-2 text-sm text-cream outline-none focus:border-accent";
@@ -25,6 +26,8 @@ export type TechProfile = {
   continuation_requirements: string | null;
   known_issues: string | null;
   reviewed_at: string | null;
+  doc_content: string | null;
+  doc_fetched_at: string | null;
 } | null;
 
 export type TechStatus = {
@@ -120,12 +123,14 @@ export function TechProfilePanel({
       </div>
 
       <div className="px-5 pt-4">
+        {!profile?.doc_content && (
         <div className="h-1.5 overflow-hidden rounded-full bg-ink">
           <div
             className={pct >= 80 ? "h-full bg-accent" : "h-full bg-violet"}
             style={{ width: `${pct}%` }}
           />
         </div>
+        )}
 
         <p className={`mt-2 text-xs ${stale ? "text-violet" : "text-muted"}`}>
           {profile?.reviewed_at
@@ -136,8 +141,21 @@ export function TechProfilePanel({
         </p>
       </div>
 
-      {/* Lectura: lo que ya está documentado */}
-      {filled.length > 0 && (
+      {/* Documento del repositorio, tal cual */}
+      {profile?.doc_content && (
+        <div className="mt-4 px-5">
+          <div
+            className="max-h-[32rem] overflow-y-auto rounded-lg border border-line bg-ink px-4 py-3 text-sm leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(profile.doc_content) }}
+          />
+          <p className="mt-2 text-xs text-muted">
+            Documento del repositorio. Se relee todos los días.
+          </p>
+        </div>
+      )}
+
+      {/* Campos estructurados: solo si no hay documento o como complemento */}
+      {filled.length > 0 && !profile?.doc_content && (
         <dl className="mt-4 space-y-3 px-5">
           {filled.map((f) => (
             <div key={f.name} className="border-l-2 border-line-2 pl-3">
@@ -148,7 +166,23 @@ export function TechProfilePanel({
         </dl>
       )}
 
-      {empty.length > 0 && (
+      {profile?.doc_content && filled.length > 0 && (
+        <details className="mt-4 px-5">
+          <summary className="cursor-pointer text-xs text-muted hover:text-accent">
+            Ver campos estructurados ({filled.length})
+          </summary>
+          <dl className="mt-3 space-y-3">
+            {filled.map((f) => (
+              <div key={f.name} className="border-l-2 border-line-2 pl-3">
+                <dt className="text-xs uppercase tracking-wide text-muted">{f.label}</dt>
+                <dd className="mt-0.5 whitespace-pre-wrap text-sm">{profile?.[f.name]}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+
+      {empty.length > 0 && !profile?.doc_content && (
         <p className="mt-4 px-5 text-xs text-muted">
           Sin completar: {empty.map((f) => f.label.toLowerCase()).join(", ")}.
         </p>
