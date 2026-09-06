@@ -31,6 +31,7 @@ export async function createAsset(formData: FormData): Promise<void> {
     cost: cost ? Number(cost) : null,
     currency: String(formData.get("currency") ?? "USD"),
     billing_cycle: String(formData.get("billing_cycle") ?? "anual"),
+    cost_reason: String(formData.get("cost_reason") ?? "").trim() || null,
     expires_at: String(formData.get("expires_at") ?? "").trim() || null,
     notes: String(formData.get("notes") ?? "").trim() || null,
   });
@@ -72,6 +73,7 @@ export async function updateAsset(id: string, formData: FormData): Promise<void>
       cost: cost ? Number(cost) : null,
       currency: String(formData.get("currency") ?? "USD"),
       billing_cycle: String(formData.get("billing_cycle") ?? "anual"),
+      cost_reason: String(formData.get("cost_reason") ?? "").trim() || null,
       expires_at: String(formData.get("expires_at") ?? "").trim() || null,
       paid_at: String(formData.get("paid_at") ?? "").trim() || null,
       notes: String(formData.get("notes") ?? "").trim() || null,

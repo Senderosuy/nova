@@ -2,6 +2,16 @@ import { updateAsset, deleteAsset } from "@/app/(app)/activos/actions";
 import { SubmitButton } from "./submit-button";
 
 const TYPES = ["dominio", "hosting", "herramienta", "licencia", "otro"] as const;
+const REASONS = [
+  { v: "", l: "— sin causa definida —" },
+  { v: "reserva_dominio", l: "Reserva de dominio" },
+  { v: "herramienta_interna", l: "Herramienta interna" },
+  { v: "infraestructura", l: "Infraestructura" },
+  { v: "marca", l: "Marca / defensiva" },
+  { v: "cliente_potencial", l: "Cliente potencial" },
+  { v: "otro", l: "Otro" },
+] as const;
+
 const CYCLES = ["mensual", "trimestral", "semestral", "anual", "unico", "gratis"] as const;
 
 const inputCls =
@@ -22,6 +32,7 @@ export type EditableAsset = {
   expires_at: string | null;
   paid_at: string | null;
   notes: string | null;
+  cost_reason?: string | null;
 };
 
 /**
@@ -147,6 +158,21 @@ export function AssetEditor({
               defaultValue={asset.paid_at ?? ""}
               className={inputCls}
             />
+          </label>
+
+          <label className={`${labelCls} sm:col-span-2`}>
+            Causa del gasto <span className="normal-case">(si no está en un proyecto, lo paga Nova)</span>
+            <select
+              name="cost_reason"
+              defaultValue={asset.cost_reason ?? ""}
+              className={inputCls}
+            >
+              {REASONS.map((r) => (
+                <option key={r.v} value={r.v}>
+                  {r.l}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className={`${labelCls} sm:col-span-2`}>

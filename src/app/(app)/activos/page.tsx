@@ -44,20 +44,45 @@ export default async function ActivosPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: assets }, { data: providers }] = await Promise.all([
+  const [{ data: assets }, { data: providers }, { data: assignments }] = await Promise.all([
     supabase
       .from("assets")
       .select(
-        "id,type,name,provider,provider_id,identifier,ownership,cost,currency,billing_cycle,expires_at,paid_at,notes"
+        "id,type,name,provider,provider_id,identifier,ownership,cost,currency,billing_cycle,expires_at,paid_at,notes,cost_reason"
       )
       .is("deleted_at", null)
       .order("expires_at", { ascending: true, nullsFirst: false }),
     supabase.from("providers").select("id,name").is("deleted_at", null).order("name"),
+    supabase
+      .from("asset_assignments")
+      .select("asset_id,projects(name)")
+      .is("assigned_until", null),
   ]);
+
+  const REASON_LABEL: Record<string, string> = {
+    reserva_dominio: "reserva",
+    herramienta_interna: "herramienta interna",
+    infraestructura: "infraestructura",
+    marca: "marca",
+    cliente_potencial: "cliente potencial",
+    otro: "otro",
+  };
+
+  const projectOf = new Map(
+    (assignments ?? []).map((x) => {
+      const rel = x.projects as unknown as { name: string } | { name: string }[] | null;
+      const one = Array.isArray(rel) ? rel[0] : rel;
+      return [x.asset_id, one?.name ?? null];
+    })
+  );
+
 
   const filtered = (assets ?? []).filter((a) =>
     matches(q, a.name, a.type, a.provider, a.identifier, a.ownership, a.billing_cycle)
   );
+
+  const orphans = filtered.filter((a) => !projectOf.get(a.id));
+  const unlabeled = orphans.filter((a) => !a.cost_reason);
 
   return (
     <div>
@@ -77,18 +102,26 @@ export default async function ActivosPage({
         </Link>
       </div>
 
+      {unlabeled.length > 0 && (
+        <p className="mt-4 rounded-lg border border-violet/40 bg-violet/10 px-4 py-2 text-sm text-violet">
+          {unlabeled.length} activo{unlabeled.length === 1 ? "" : "s"} sin proyecto ni causa
+          declarada. Su costo lo cubre Nova: definí por qué se paga en cada uno.
+        </p>
+      )}
+
       <div className="mt-4">
         <SearchInput placeholder="Buscar activo, proveedor, tipo…" />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="overflow-x-auto rounded-[18px] border border-line bg-ink-2">
-          <table className="w-full min-w-[680px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Activo</th>
                 <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Proveedor</th>
+                <th className="px-4 py-3 font-medium">Gasto de</th>
                 <th className="px-4 py-3 font-medium">Costo neto</th>
                 <th className="px-4 py-3 font-medium">Vence</th>
                 <th className="px-4 py-3 font-medium"></th>
@@ -100,6 +133,27 @@ export default async function ActivosPage({
                   <td className="px-4 py-3 font-medium">{a.name}</td>
                   <td className="hidden px-4 py-3 text-muted sm:table-cell">{a.type}</td>
                   <td className="px-4 py-3 text-muted">{a.provider ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const proj = projectOf.get(a.id);
+                      if (proj)
+                        return <span className="text-xs text-muted">{proj}</span>;
+                      if (a.cost_reason)
+                        return (
+                          <span className="rounded-full bg-ink-3 px-2 py-0.5 text-xs text-cream">
+                            Nova · {REASON_LABEL[a.cost_reason] ?? a.cost_reason}
+                          </span>
+                        );
+                      return (
+                        <span
+                          className="rounded-full bg-violet/20 px-2 py-0.5 text-xs text-violet"
+                          title="Sin proyecto ni causa: definí por qué Nova lo paga"
+                        >
+                          sin causa
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-muted">
                     {a.cost
                       ? `${a.currency} ${Number(a.cost).toLocaleString("es-UY")} / ${a.billing_cycle}`
@@ -115,7 +169,7 @@ export default async function ActivosPage({
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted">
                     Sin activos. Sincronizá Hostinger o cargá uno manual.
                   </td>
                 </tr>

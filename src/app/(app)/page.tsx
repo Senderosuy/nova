@@ -72,6 +72,7 @@ export default async function DashboardPage() {
     { data: sust },
     { data: monthly },
     { data: partners },
+    { data: orphanAssets },
     { data: techStatus },
   ] = await Promise.all([
     supabase.from("upcoming_renewals").select("*").order("due_date").limit(10),
@@ -79,6 +80,7 @@ export default async function DashboardPage() {
     supabase.from("sustainability").select("*").single(),
     supabase.from("finance_monthly").select("*").eq("period", thisMonth).maybeSingle(),
     supabase.from("partner_account").select("name,balance_usd").gt("balance_usd", 0),
+    supabase.from("unassigned_assets").select("id,cost_reason"),
     supabase
       .from("project_tech_status")
       .select("project_id,name,completeness_pct,days_since_review,has_doc"),
@@ -100,6 +102,8 @@ export default async function DashboardPage() {
       Number(t.completeness_pct ?? 0) === 0 ||
       (t.days_since_review !== null && Number(t.days_since_review) > 180)
   );
+
+  const unlabeledAssets = (orphanAssets ?? []).filter((a) => !a.cost_reason).length;
 
   const partnerDebt = (partners ?? []).reduce(
     (s, p) => s + Number(p.balance_usd ?? 0),
@@ -239,6 +243,15 @@ export default async function DashboardPage() {
           </ul>
         </div>
       </div>
+
+      {unlabeledAssets > 0 && (
+        <p className="mt-6 rounded-lg border border-violet/40 bg-violet/10 px-4 py-2 text-sm text-violet">
+          <Link href="/activos" className="hover:underline">
+            {unlabeledAssets} activo{unlabeledAssets === 1 ? "" : "s"} sin proyecto ni causa
+            declarada — su costo lo cubre Nova sin motivo registrado.
+          </Link>
+        </p>
+      )}
 
       {needsAttention.length > 0 && (
         <div className="mt-6 rounded-[18px] border border-line bg-ink-2 p-5">
