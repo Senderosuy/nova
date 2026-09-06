@@ -1,5 +1,6 @@
 import { hostingerConnector } from "./hostinger";
 import { cloudflareConnector } from "./cloudflare";
+import { nicUyConnector } from "./nic-uy";
 import type { ProviderConnector } from "./types";
 
 /**
@@ -16,6 +17,7 @@ import type { ProviderConnector } from "./types";
 export const CONNECTORS: Record<string, ProviderConnector> = {
   [hostingerConnector.key]: hostingerConnector,
   [cloudflareConnector.key]: cloudflareConnector,
+  [nicUyConnector.key]: nicUyConnector,
 };
 
 export function getConnector(key: string | null): ProviderConnector | null {
