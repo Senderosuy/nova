@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createProject } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
-import { SearchInput, matches } from "@/components/search-input";
+import { SearchInput } from "@/components/search-input";
+import { matches } from "@/lib/search";
 
 const STATUSES = [
   "presupuestado",

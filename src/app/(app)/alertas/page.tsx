@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { runAlertScan, setAlertStatus } from "./actions";
-import { SearchInput, matches } from "@/components/search-input";
+import { SearchInput } from "@/components/search-input";
+import { matches } from "@/lib/search";
 import { SubmitButton } from "@/components/submit-button";
 
 function daysTo(date: string): number {

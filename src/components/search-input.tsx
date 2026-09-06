@@ -51,12 +51,3 @@ export function SearchInput({ placeholder }: { placeholder: string }) {
     </div>
   );
 }
-
-/** Busca un término en varios campos, sin distinguir mayúsculas ni acentos. */
-export function matches(term: string | undefined, ...fields: (string | null | undefined)[]) {
-  if (!term) return true;
-  const norm = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const q = norm(term);
-  return fields.some((f) => f && norm(f).includes(q));
-}
