@@ -36,6 +36,7 @@ export type Schedule = {
 
 export type Charge = {
   id: string;
+  direction: string;
   concept: string;
   amount: number;
   currency: string;
@@ -62,11 +63,13 @@ export function RevenuePanel({
   charges,
   assets,
   catalog,
+  methods,
 }: {
   projectId: string;
   services: Schedule[];
   charges: Charge[];
   assets: { id: string; name: string; expires_at: string | null }[];
+  methods: { id: string; label: string }[];
   catalog: { id: string; concept: string; reference_price: number | null; currency: string; kind: string }[];
 }) {
   const recurring = catalog.filter((c) => c.kind === "recurrente");
@@ -296,7 +299,7 @@ export function RevenuePanel({
         <div className="border-b border-line px-5 py-4">
           <h2 className="font-display text-base font-semibold">Cargos únicos</h2>
           <p className="mt-1 text-xs text-muted">
-            Desarrollo, creación y extras. Impactan en el año de su fecha.
+            Ingresos (desarrollo, extras) y gastos puntuales del proyecto. Impactan en el año de su fecha.
           </p>
         </div>
 
@@ -308,7 +311,10 @@ export function RevenuePanel({
             >
               <div>
                 <span className="font-medium">{c.concept}</span>
-                <span className="ml-2 text-accent">{money(c.amount, c.currency)}</span>
+                <span className={c.direction === "egreso" ? "ml-2 text-violet" : "ml-2 text-accent"}>
+                  {c.direction === "egreso" ? "−" : "+"}
+                  {money(c.amount, c.currency)}
+                </span>
                 <span className="ml-2 text-xs text-muted">{c.charge_date}</span>
                 <Chip
                   label={c.billing_status}
@@ -364,6 +370,14 @@ export function RevenuePanel({
             </label>
 
             <label className={labelCls}>
+              Tipo
+              <select name="direction" defaultValue="ingreso" className={inputCls}>
+                <option value="ingreso">Ingreso — le cobramos al cliente</option>
+                <option value="egreso">Egreso — gasto del proyecto</option>
+              </select>
+            </label>
+
+            <label className={labelCls}>
               Importe
               <input name="amount" type="number" step="0.01" required className={inputCls} />
             </label>
@@ -376,7 +390,19 @@ export function RevenuePanel({
               </select>
             </label>
 
-            <label className={`${labelCls} sm:col-span-2`}>
+            <label className={labelCls}>
+              Método de pago
+              <select name="payment_method_id" defaultValue="" className={inputCls}>
+                <option value="">— sin método —</option>
+                {methods.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={labelCls}>
               Fecha
               <input
                 name="charge_date"

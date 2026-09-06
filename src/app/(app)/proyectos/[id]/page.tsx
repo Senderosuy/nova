@@ -30,7 +30,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -67,13 +67,14 @@ export default async function ProyectoDetailPage({
         .eq("project_id", id),
       supabase
         .from("project_charges")
-        .select("id,concept,amount,currency,charge_date,billing_status")
+        .select("id,direction,concept,amount,currency,charge_date,billing_status")
         .eq("project_id", id)
         .order("charge_date", { ascending: false }),
       supabase
         .from("service_catalog")
         .select("id,concept,reference_price,currency,kind")
         .order("concept"),
+      supabase.from("payment_methods").select("id,label").eq("active", true).order("label"),
       supabase
         .from("project_line_items")
         .select("*")
@@ -230,6 +231,7 @@ export default async function ProyectoDetailPage({
                 return { id: one?.id ?? "", name: one?.name ?? "", expires_at: one?.expires_at ?? null };
               })}
               catalog={catalog ?? []}
+              methods={payMethods ?? []}
             />
           </div>
 

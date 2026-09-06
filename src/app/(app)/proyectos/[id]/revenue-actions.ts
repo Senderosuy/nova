@@ -109,6 +109,9 @@ export async function createCharge(projectId: string, formData: FormData): Promi
 
   const { error } = await supabase.from("project_charges").insert({
     project_id: projectId,
+    scope: "proyecto",
+    direction: String(formData.get("direction") ?? "ingreso"),
+    payment_method_id: txt(formData, "payment_method_id"),
     concept: String(formData.get("concept") ?? "").trim(),
     amount: num(formData, "amount") ?? 0,
     currency: String(formData.get("currency") ?? "USD"),
