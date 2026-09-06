@@ -328,11 +328,6 @@ export default async function ProyectosPage({
           </label>
 
           <label className={`${labelCls} mt-3`}>
-            Repositorio
-            <input name="repo_url" type="url" className={inputCls} />
-          </label>
-
-          <label className={`${labelCls} mt-3`}>
             Descripción
             <textarea name="description" rows={2} className={inputCls} />
           </label>

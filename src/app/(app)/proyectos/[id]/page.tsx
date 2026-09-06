@@ -2,7 +2,14 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { assignAsset, unassignAsset, updateProjectStatus, setOwnershipType } from "./actions";
+import {
+  assignAsset,
+  unassignAsset,
+  updateProjectStatus,
+  setOwnershipType,
+  updateProject,
+  archiveProject,
+} from "./actions";
 import { AssetEditor } from "@/components/asset-editor";
 import { RevenuePanel } from "@/components/revenue-panel";
 import { CostBreakdown } from "@/components/cost-breakdown";
@@ -32,11 +39,11 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: outflows }, { data: ownedMethods }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: outflows }, { data: ownedMethods }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
-        .select("id,name,type,status,ownership_type,description,production_url,repo_url,docs_repo,docs_path,docs_branch,docs_synced_at,docs_sync_result,clients(name)")
+        .select("id,name,type,status,ownership_type,client_id,description,production_url,repo_url,docs_repo,docs_path,docs_branch,docs_synced_at,docs_sync_result,clients(name)")
         .eq("id", id)
         .is("deleted_at", null)
         .single(),
@@ -59,6 +66,7 @@ export default async function ProyectoDetailPage({
         .order("created_at", { ascending: false })
         .limit(20),
       supabase.from("providers").select("id,name").is("deleted_at", null).order("name"),
+      supabase.from("clients").select("id,name").is("deleted_at", null).order("name"),
       supabase
         .from("project_costs")
         .select("currency,net_monthly,net_yearly")
@@ -223,7 +231,66 @@ export default async function ProyectoDetailPage({
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_360px]">
+      <details className="mt-4 rounded-[18px] border border-line bg-ink-2 px-5 py-4">
+        <summary className="cursor-pointer text-xs text-muted hover:text-accent">
+          Editar datos del proyecto
+        </summary>
+        <form action={updateProject.bind(null, project.id)} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted">
+            Nombre
+            <input name="name" defaultValue={project.name} required className={inputCls} />
+          </label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted">
+            Cliente
+            <select name="client_id" defaultValue={project.client_id ?? ""} className={inputCls}>
+              {(clientList ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted">
+            Tipo
+            <select name="type" defaultValue={project.type} className={inputCls}>
+              {["landing", "ecommerce", "sistema", "automatizacion", "otro"].map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted">
+            URL de producción
+            <input name="production_url" type="url" defaultValue={project.production_url ?? ""} className={inputCls} />
+          </label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted sm:col-span-2">
+            Enlace al código <span className="normal-case">(Lovable, GitHub o donde esté)</span>
+            <input name="repo_url" defaultValue={project.repo_url ?? ""} className={inputCls} />
+          </label>
+          <label className="block text-xs font-medium uppercase tracking-wide text-muted sm:col-span-2">
+            Descripción
+            <textarea name="description" rows={2} defaultValue={project.description ?? ""} className={inputCls} />
+          </label>
+          <SubmitButton
+            className="rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink hover:opacity-90 sm:col-span-2"
+            pendingLabel="Guardando…"
+          >
+            Guardar cambios
+          </SubmitButton>
+        </form>
+
+        <form action={archiveProject.bind(null, project.id)} className="mt-4 border-t border-line pt-3">
+          <SubmitButton className="text-xs text-muted hover:text-violet" pendingLabel="Archivando…">
+            Archivar proyecto
+          </SubmitButton>
+          <span className="ml-3 text-xs text-muted">
+            Cierra sus asignaciones y lo saca de las listas. No borra el historial.
+          </span>
+        </form>
+      </details>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
         <div>
           {project.ownership_type === "propio" && investment && (
             <div className="mb-6">
