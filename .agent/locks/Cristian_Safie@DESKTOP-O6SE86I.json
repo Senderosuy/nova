@@ -1,11 +1,11 @@
 {
   "agent": "Cristian_Safie@DESKTOP-O6SE86I",
-  "task": "actualizar SPEC con ingresos, finanzas y proyectos propios",
+  "task": "socios, aportes y autosustentabilidad",
   "paths": [
-    "docs",
-    ".agent"
+    "supabase/migrations",
+    "src/app/(app)/socios"
   ],
-  "since": "2026-09-06T18:25:16.619Z",
-  "heartbeat": "2026-09-06T18:25:16.620Z",
+  "since": "2026-09-06T19:09:42.533Z",
+  "heartbeat": "2026-09-06T19:09:42.533Z",
   "branch": "main"
 }
