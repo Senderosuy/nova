@@ -7,6 +7,7 @@ import { AssetEditor } from "@/components/asset-editor";
 import { RevenuePanel } from "@/components/revenue-panel";
 import { CostBreakdown } from "@/components/cost-breakdown";
 import { InvestmentPanel } from "@/components/investment-panel";
+import { TechProfilePanel } from "@/components/tech-profile-panel";
 import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
@@ -31,7 +32,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -75,6 +76,16 @@ export default async function ProyectoDetailPage({
         .from("service_catalog")
         .select("id,concept,reference_price,currency,kind")
         .order("concept"),
+      supabase
+        .from("project_tech_profiles")
+        .select("*")
+        .eq("project_id", id)
+        .maybeSingle(),
+      supabase
+        .from("project_tech_status")
+        .select("completeness_pct,filled_fields,total_fields,days_since_review")
+        .eq("project_id", id)
+        .maybeSingle(),
       supabase
         .from("project_investment")
         .select("invested_total_usd,invested_year_usd,returned_total_usd,net_position_usd")
@@ -345,6 +356,13 @@ export default async function ProyectoDetailPage({
           </div>
         </div>
 
+        <div className="space-y-6">
+        <TechProfilePanel
+          projectId={project.id}
+          profile={(techProfile ?? null) as never}
+          status={(techStatus ?? null) as never}
+        />
+
         <div className="rounded-[18px] border border-line bg-ink-2 p-5">
           <h2 className="font-display text-base font-semibold">Historial</h2>
           <ul className="mt-3 space-y-3">
@@ -360,6 +378,7 @@ export default async function ProyectoDetailPage({
               <li className="text-sm text-muted">Sin eventos todavía.</li>
             )}
           </ul>
+        </div>
         </div>
       </div>
     </div>

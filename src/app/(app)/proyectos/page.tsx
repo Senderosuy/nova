@@ -42,13 +42,14 @@ export default async function ProyectosPage({
 
   const THIS_YEAR = new Date().getFullYear();
 
-  const [{ data: projects }, { data: clients }, { data: annual }] = await Promise.all([
+  const [{ data: projects }, { data: clients }, { data: techStatus }, { data: annual }] = await Promise.all([
     query,
     supabase
       .from("clients")
       .select("id,name")
       .is("deleted_at", null)
       .order("name"),
+    supabase.from("project_tech_status").select("project_id,completeness_pct"),
     supabase
       .from("project_margin")
       .select("project_id,year,revenue_usd,cost_usd,margin_usd")
@@ -74,6 +75,10 @@ export default async function ProyectosPage({
     };
     byProject.set(row.project_id, entry);
   }
+
+  const techByProject = new Map(
+    (techStatus ?? []).map((t) => [t.project_id, Number(t.completeness_pct)])
+  );
 
   const shown = new Set(filtered.map((p) => p.id));
   const totals = (annual ?? [])
@@ -141,6 +146,7 @@ export default async function ProyectosPage({
                 <th className="px-4 py-3 font-medium">Cliente</th>
                 <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 font-medium" title="Completitud de la ficha técnica">Ficha</th>
                 <th className="px-4 py-3 text-right font-medium">
                   {THIS_YEAR} <span className="normal-case">margen</span>
                 </th>
@@ -186,6 +192,25 @@ export default async function ProyectosPage({
                       {p.status.replace("_", " ")}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const t = techByProject.get(p.id) ?? 0;
+                      return (
+                        <span
+                          className={
+                            t >= 80
+                              ? "text-xs text-accent"
+                              : t > 0
+                                ? "text-xs text-cream"
+                                : "text-xs text-muted"
+                          }
+                          title={`Ficha técnica ${t}% completa`}
+                        >
+                          {t > 0 ? `${t}%` : "—"}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-right">{cell(THIS_YEAR)}</td>
                   <td className="px-4 py-3 text-right">{cell(THIS_YEAR + 1)}</td>
                   <td className="hidden px-4 py-3 text-xs sm:table-cell">
@@ -218,7 +243,7 @@ export default async function ProyectosPage({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted">
                     Sin proyectos {status ? "con ese estado" : "todavía"}.
                   </td>
                 </tr>
@@ -227,7 +252,7 @@ export default async function ProyectosPage({
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t border-line-2 text-xs uppercase tracking-wide">
-                  <td colSpan={4} className="px-4 py-3 text-muted">
+                  <td colSpan={5} className="px-4 py-3 text-muted">
                     Margen total
                   </td>
                   <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
