@@ -2,10 +2,11 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { assignAsset, unassignAsset, updateProjectStatus } from "./actions";
+import { assignAsset, unassignAsset, updateProjectStatus, setOwnershipType } from "./actions";
 import { AssetEditor } from "@/components/asset-editor";
 import { RevenuePanel } from "@/components/revenue-panel";
 import { CostBreakdown } from "@/components/cost-breakdown";
+import { InvestmentPanel } from "@/components/investment-panel";
 import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
@@ -30,11 +31,11 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: payMethods }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
-        .select("id,name,type,status,description,production_url,repo_url,clients(name)")
+        .select("id,name,type,status,ownership_type,description,production_url,repo_url,clients(name)")
         .eq("id", id)
         .is("deleted_at", null)
         .single(),
@@ -74,6 +75,11 @@ export default async function ProyectoDetailPage({
         .from("service_catalog")
         .select("id,concept,reference_price,currency,kind")
         .order("concept"),
+      supabase
+        .from("project_investment")
+        .select("invested_total_usd,invested_year_usd,returned_total_usd,net_position_usd")
+        .eq("project_id", id)
+        .single(),
       supabase.from("payment_methods").select("id,label").eq("active", true).order("label"),
       supabase
         .from("project_line_items")
@@ -116,6 +122,11 @@ export default async function ProyectoDetailPage({
             {project.name}
           </h1>
           <p className="mt-1 text-sm text-muted">
+            {project.ownership_type === "propio" && (
+              <span className="mr-2 rounded-full bg-violet/20 px-2 py-0.5 text-xs text-violet">
+                producto propio
+              </span>
+            )}
             {clientName ?? "—"} · {project.type}
             {project.description ? ` · ${project.description}` : ""}
           </p>
@@ -143,6 +154,20 @@ export default async function ProyectoDetailPage({
           </p>
         </div>
 
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+        <form
+          action={setOwnershipType.bind(
+            null,
+            project.id,
+            project.ownership_type === "propio" ? "cliente" : "propio"
+          )}
+        >
+          <SubmitButton className="text-xs text-muted hover:text-accent" pendingLabel="…">
+            {project.ownership_type === "propio"
+              ? "Marcar como proyecto de cliente"
+              : "Marcar como producto propio"}
+          </SubmitButton>
+        </form>
         <form action={updateProjectStatus.bind(null, project.id)} className="flex gap-2">
           <select name="status" defaultValue={project.status} className={inputCls + " mt-0 w-full sm:w-44"}>
             {STATUSES.map((s) => (
@@ -155,13 +180,22 @@ export default async function ProyectoDetailPage({
             className="rounded-lg border border-line-2 px-3 py-2 text-sm text-muted hover:border-accent hover:text-accent"
            pendingLabel="Cambiando…">Cambiar</SubmitButton>
         </form>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_360px]">
         <div>
+          {project.ownership_type === "propio" && investment && (
+            <div className="mb-6">
+              <InvestmentPanel inv={investment as never} year={THIS_YEAR} />
+            </div>
+          )}
+
           <div className="mb-6 rounded-[18px] border border-line bg-ink-2 p-5">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-              <h2 className="font-display text-base font-semibold">Resultado por año</h2>
+              <h2 className="font-display text-base font-semibold">
+                {project.ownership_type === "propio" ? "Proyección por año" : "Resultado por año"}
+              </h2>
               <span className="text-xs text-muted">interno — no se informa al cliente</span>
             </div>
 

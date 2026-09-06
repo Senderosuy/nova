@@ -61,3 +61,21 @@ export async function updateProjectStatus(
   revalidatePath("/proyectos");
   revalidatePath("/");
 }
+
+/** Alterna entre proyecto de cliente y producto propio de Nova. */
+export async function setOwnershipType(
+  projectId: string,
+  type: "cliente" | "propio"
+): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ ownership_type: type })
+    .eq("id", projectId);
+
+  if (error) throw new Error(`No se pudo cambiar la naturaleza: ${error.message}`);
+  revalidatePath(`/proyectos/${projectId}`);
+  revalidatePath("/proyectos");
+}
