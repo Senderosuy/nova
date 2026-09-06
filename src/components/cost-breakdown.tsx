@@ -16,6 +16,8 @@ export type LineItem = {
   cost_usd_year: number;
   price_usd_year: number;
   margin_usd_year: number;
+  paid_by_client?: boolean;
+  reference_usd_year?: number;
 };
 
 const KIND_LABEL: Record<string, string> = {
@@ -87,9 +89,22 @@ export function CostBreakdown({ items }: { items: LineItem[] }) {
                       {i.expires_at ? ` · ${i.expires_at}` : ""}
                       {i.paid_with ? ` · ${i.paid_with}` : ""}
                     </span>
+                    {i.paid_by_client && (
+                      <span className="ml-2 rounded-full bg-ink-3 px-2 py-0.5 text-xs text-cream">
+                        lo paga el cliente
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {Number(i.cost_usd_year) > 0 ? usd(i.cost_usd_year) : <span className="text-muted">—</span>}
+                    {i.paid_by_client ? (
+                      <span className="text-muted" title="Lo paga el cliente: no es costo de Nova">
+                        ({usd(i.reference_usd_year ?? 0)})
+                      </span>
+                    ) : Number(i.cost_usd_year) > 0 ? (
+                      usd(i.cost_usd_year)
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-accent">
                     {Number(i.price_usd_year) > 0 ? usd(i.price_usd_year) : <span className="text-muted">—</span>}
@@ -141,6 +156,13 @@ export function CostBreakdown({ items }: { items: LineItem[] }) {
           )}
         </table>
       </div>
+
+      {items.some((i) => i.paid_by_client) && (
+        <p className="border-t border-line px-5 py-3 text-xs text-muted">
+          Los importes entre paréntesis los paga el cliente: se muestran como
+          referencia pero no son costo de Nova.
+        </p>
+      )}
 
       {margin < 0 && items.length > 0 && (
         <p className="border-t border-line px-5 py-3 text-xs text-violet">
