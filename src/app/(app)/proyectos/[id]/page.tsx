@@ -9,6 +9,8 @@ import {
   setOwnershipType,
   updateProject,
   archiveProject,
+  setAssetOwnership,
+  setAllAssetsToClient,
 } from "./actions";
 import { AssetEditor } from "@/components/asset-editor";
 import { RevenuePanel } from "@/components/revenue-panel";
@@ -50,7 +52,7 @@ export default async function ProyectoDetailPage({
       supabase
         .from("asset_assignments")
         .select(
-          "id,assigned_from,assigned_until,assets(id,name,type,provider,provider_id,identifier,ownership,expires_at,paid_at,notes,cost,currency,billing_cycle)"
+          "id,assigned_from,assigned_until,assets(id,name,type,provider,provider_id,identifier,ownership,expires_at,paid_at,notes,cost,currency,billing_cycle,cost_reason)"
         )
         .eq("project_id", id)
         .order("assigned_from", { ascending: false }),
@@ -383,7 +385,20 @@ export default async function ProyectoDetailPage({
 
           <div className="rounded-[18px] border border-line bg-ink-2">
             <div className="flex flex-col gap-3 border-b border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="font-display text-base font-semibold">Activos asignados</h2>
+              <div>
+                <h2 className="font-display text-base font-semibold">Activos asignados</h2>
+                {active.length > 0 && (
+                  <form action={setAllAssetsToClient.bind(null, project.id)} className="mt-1">
+                    <SubmitButton
+                      className="text-xs text-muted hover:text-accent"
+                      title="Marca todos como del cliente: su costo deja de pesar sobre Nova"
+                      pendingLabel="Aplicando…"
+                    >
+                      Marcar todos como del cliente
+                    </SubmitButton>
+                  </form>
+                )}
+              </div>
               <form action={assignAsset.bind(null, project.id)} className="flex gap-2">
                 <select name="asset_id" className={inputCls + " mt-0 w-full sm:w-56"} defaultValue="">
                   <option value="" disabled>
@@ -434,6 +449,11 @@ export default async function ProyectoDetailPage({
                   >
                     <div>
                       <span className="font-medium">{asset.name}</span>
+                      {asset.ownership === "cliente" && (
+                        <span className="ml-2 rounded-full bg-ink-3 px-2 py-0.5 text-xs text-cream">
+                          del cliente
+                        </span>
+                      )}
                       <span className="ml-2 text-xs text-muted">
                         {asset.type} · {asset.provider ?? "—"}
                         {asset.expires_at ? ` · vence ${asset.expires_at}` : ""}
@@ -443,6 +463,22 @@ export default async function ProyectoDetailPage({
                       </span>
                     </div>
                     <div className="flex shrink-0 items-start gap-4">
+                    <form
+                      action={setAssetOwnership.bind(
+                        null,
+                        project.id,
+                        asset.id,
+                        asset.ownership === "cliente" ? "nova" : "cliente"
+                      )}
+                    >
+                      <SubmitButton
+                        className="text-xs text-muted hover:text-accent"
+                        title="Decide si el costo pesa sobre Nova o sobre el cliente"
+                        pendingLabel="…"
+                      >
+                        {asset.ownership === "cliente" ? "Pasar a Nova" : "Pasar al cliente"}
+                      </SubmitButton>
+                    </form>
                     <AssetEditor asset={asset} providers={providers ?? []} />
                     <form action={unassignAsset.bind(null, project.id, a.id)}>
                       <SubmitButton

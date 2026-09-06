@@ -131,3 +131,56 @@ export async function archiveProject(projectId: string): Promise<void> {
   if (error) throw new Error(`No se pudo archivar: ${error.message}`);
   redirect("/proyectos");
 }
+
+/**
+ * Cambia de quién es un activo. Es la palanca que decide si su costo
+ * pesa sobre Nova o sobre el cliente: al cambiarla, el margen del
+ * proyecto, los gastos fijos y el aporte del socio se recalculan solos.
+ */
+export async function setAssetOwnership(
+  projectId: string,
+  assetId: string,
+  ownership: "nova" | "cliente"
+): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { error } = await supabase
+    .from("assets")
+    .update({ ownership })
+    .eq("id", assetId);
+
+  if (error) throw new Error(`No se pudo cambiar la propiedad: ${error.message}`);
+
+  revalidatePath(`/proyectos/${projectId}`);
+  revalidatePath("/activos");
+  revalidatePath("/socios");
+  revalidatePath("/finanzas");
+}
+
+/** Marca todos los activos vigentes del proyecto como del cliente. */
+export async function setAllAssetsToClient(projectId: string): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: rows } = await supabase
+    .from("asset_assignments")
+    .select("asset_id")
+    .eq("project_id", projectId)
+    .is("assigned_until", null);
+
+  const ids = (rows ?? []).map((r) => r.asset_id);
+  if (ids.length === 0) return;
+
+  const { error } = await supabase
+    .from("assets")
+    .update({ ownership: "cliente" })
+    .in("id", ids);
+
+  if (error) throw new Error(`No se pudo actualizar: ${error.message}`);
+
+  revalidatePath(`/proyectos/${projectId}`);
+  revalidatePath("/activos");
+  revalidatePath("/socios");
+  revalidatePath("/finanzas");
+}
