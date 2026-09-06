@@ -1,13 +1,19 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createClientRecord, toggleClientStatus } from "./actions";
+import { SearchInput, matches } from "@/components/search-input";
 import { SubmitButton } from "@/components/submit-button";
 
 const inputCls =
   "mt-1.5 w-full rounded-lg border border-line-2 bg-ink px-3 py-2 text-sm text-cream outline-none focus:border-accent";
 const labelCls = "block text-xs font-medium uppercase tracking-wide text-muted";
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -17,15 +23,23 @@ export default async function ClientesPage() {
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
 
+  const filtered = (clients ?? []).filter((c) =>
+    matches(q, c.name, c.kind, c.contact_name, c.contact_email, c.contact_phone, c.status)
+  );
+
   return (
     <div>
       <h1 className="font-display text-2xl font-semibold tracking-tight">Clientes</h1>
       <p className="mt-1 text-sm text-muted">
-        {clients?.length ?? 0} cliente{(clients?.length ?? 0) === 1 ? "" : "s"} registrado
-        {(clients?.length ?? 0) === 1 ? "" : "s"}.
+        {filtered.length} cliente{filtered.length === 1 ? "" : "s"}
+        {q ? ` de ${clients?.length ?? 0}` : " registrados"}.
       </p>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="mt-4">
+        <SearchInput placeholder="Buscar cliente, contacto, email…" />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
           <table className="w-full text-sm">
             <thead>
@@ -37,7 +51,7 @@ export default async function ClientesPage() {
               </tr>
             </thead>
             <tbody>
-              {(clients ?? []).map((c) => (
+              {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">{c.name}</td>
                   <td className="px-4 py-3 text-muted">{c.kind}</td>
@@ -65,7 +79,7 @@ export default async function ClientesPage() {
                   </td>
                 </tr>
               ))}
-              {(clients ?? []).length === 0 && (
+              {filtered.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted">
                     Sin clientes todavía. Cargá el primero con el formulario.

@@ -1,13 +1,19 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { runAlertScan, setAlertStatus } from "./actions";
+import { SearchInput, matches } from "@/components/search-input";
 import { SubmitButton } from "@/components/submit-button";
 
 function daysTo(date: string): number {
   return Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
 }
 
-export default async function AlertasPage() {
+export default async function AlertasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -24,13 +30,22 @@ export default async function AlertasPage() {
     .select("id", { count: "exact", head: true })
     .eq("status", "resuelta");
 
+  const nameOf = (rel: unknown) => {
+    const r = rel as { name?: string; concept?: string } | { name?: string; concept?: string }[] | null;
+    const one = Array.isArray(r) ? r[0] : r;
+    return one?.name ?? one?.concept;
+  };
+  const filtered = (alerts ?? []).filter((a) =>
+    matches(q, a.suggested_action, a.status, a.due_date, nameOf(a.assets), nameOf(a.recurring_services))
+  );
+
   return (
     <div>
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">Alertas</h1>
           <p className="mt-1 text-sm text-muted">
-            {alerts?.length ?? 0} abierta{(alerts?.length ?? 0) === 1 ? "" : "s"} ·{" "}
+            {filtered.length} abierta{filtered.length === 1 ? "" : "s"} ·{" "}
             {resolved ?? 0} resuelta{(resolved ?? 0) === 1 ? "" : "s"} · barrido automático
             diario 06:00
           </p>
@@ -42,7 +57,11 @@ export default async function AlertasPage() {
         </form>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-[18px] border border-line bg-ink-2">
+      <div className="mt-4">
+        <SearchInput placeholder="Buscar alerta, activo, acción…" />
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-[18px] border border-line bg-ink-2">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
@@ -55,7 +74,7 @@ export default async function AlertasPage() {
             </tr>
           </thead>
           <tbody>
-            {(alerts ?? []).map((a) => {
+            {filtered.map((a) => {
               const assetRel = a.assets as unknown as
                 | { name: string; provider: string | null }
                 | { name: string; provider: string | null }[]
@@ -110,7 +129,7 @@ export default async function AlertasPage() {
                 </tr>
               );
             })}
-            {(alerts ?? []).length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-muted">
                   Sin alertas abiertas. Nada vence en los próximos 90 días.

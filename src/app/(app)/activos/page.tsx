@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createAsset } from "./actions";
+import { SearchInput, matches } from "@/components/search-input";
 import { SubmitButton } from "@/components/submit-button";
 
 const TYPES = ["dominio", "hosting", "herramienta", "licencia", "otro"] as const;
@@ -32,7 +33,12 @@ function ExpiryBadge({ expires }: { expires: string | null }) {
   );
 }
 
-export default async function ActivosPage() {
+export default async function ActivosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -47,14 +53,18 @@ export default async function ActivosPage() {
     supabase.from("providers").select("id,name").is("deleted_at", null).order("name"),
   ]);
 
+  const filtered = (assets ?? []).filter((a) =>
+    matches(q, a.name, a.type, a.provider, a.identifier, a.ownership, a.billing_cycle)
+  );
+
   return (
     <div>
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">Activos</h1>
           <p className="mt-1 text-sm text-muted">
-            {assets?.length ?? 0} activo{(assets?.length ?? 0) === 1 ? "" : "s"} — dominios,
-            hostings, herramientas y licencias de Nova.
+            {filtered.length} activo{filtered.length === 1 ? "" : "s"}
+            {q ? ` de ${assets?.length ?? 0}` : " — dominios, hostings, herramientas y licencias de Nova"}.
           </p>
         </div>
         <Link
@@ -63,6 +73,10 @@ export default async function ActivosPage() {
         >
           Sincronizar desde proveedores
         </Link>
+      </div>
+
+      <div className="mt-4">
+        <SearchInput placeholder="Buscar activo, proveedor, tipo…" />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -78,7 +92,7 @@ export default async function ActivosPage() {
               </tr>
             </thead>
             <tbody>
-              {(assets ?? []).map((a) => (
+              {filtered.map((a) => (
                 <tr key={a.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">{a.name}</td>
                   <td className="px-4 py-3 text-muted">{a.type}</td>
@@ -93,7 +107,7 @@ export default async function ActivosPage() {
                   </td>
                 </tr>
               ))}
-              {(assets ?? []).length === 0 && (
+              {filtered.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-muted">
                     Sin activos. Sincronizá Hostinger o cargá uno manual.

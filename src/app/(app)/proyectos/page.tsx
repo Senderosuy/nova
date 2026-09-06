@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createProject } from "./actions";
 import { SubmitButton } from "@/components/submit-button";
+import { SearchInput, matches } from "@/components/search-input";
 
 const STATUSES = [
   "presupuestado",
@@ -22,9 +23,9 @@ const labelCls = "block text-xs font-medium uppercase tracking-wide text-muted";
 export default async function ProyectosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, q } = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -53,6 +54,14 @@ export default async function ProyectosPage({
       .in("year", [THIS_YEAR, THIS_YEAR + 1]),
   ]);
 
+  const clientNameOf = (p: { clients: unknown }) => {
+    const rel = p.clients as { name: string } | { name: string }[] | null;
+    return Array.isArray(rel) ? rel[0]?.name : rel?.name;
+  };
+  const filtered = (projects ?? []).filter((p) =>
+    matches(q, p.name, p.type, p.status, p.production_url, clientNameOf(p))
+  );
+
   const costByProject = new Map<string, Record<number, number>>();
   for (const row of annual ?? []) {
     const entry = costByProject.get(row.project_id) ?? {};
@@ -60,7 +69,7 @@ export default async function ProyectosPage({
     costByProject.set(row.project_id, entry);
   }
 
-  const shown = new Set((projects ?? []).map((p) => p.id));
+  const shown = new Set(filtered.map((p) => p.id));
   const totals = (annual ?? [])
     .filter((r) => shown.has(r.project_id))
     .reduce<Record<number, number>>((acc, r) => {
@@ -78,7 +87,7 @@ export default async function ProyectosPage({
     <div>
       <h1 className="font-display text-2xl font-semibold tracking-tight">Proyectos</h1>
       <p className="mt-1 text-sm text-muted">
-        {projects?.length ?? 0} proyecto{(projects?.length ?? 0) === 1 ? "" : "s"}
+        {filtered.length} proyecto{filtered.length === 1 ? "" : "s"}
         {status ? ` · filtro: ${status.replace("_", " ")}` : ""}
       </p>
 
@@ -108,6 +117,10 @@ export default async function ProyectosPage({
         ))}
       </div>
 
+      <div className="mt-4">
+        <SearchInput placeholder="Buscar proyecto, cliente, tipo…" />
+      </div>
+
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="overflow-hidden rounded-[18px] border border-line bg-ink-2">
           <table className="w-full text-sm">
@@ -127,7 +140,7 @@ export default async function ProyectosPage({
               </tr>
             </thead>
             <tbody>
-              {(projects ?? []).map((p) => {
+              {filtered.map((p) => {
                 const rel = p.clients as unknown as
                   | { name: string }
                   | { name: string }[]
@@ -182,7 +195,7 @@ export default async function ProyectosPage({
                 </tr>
                 );
               })}
-              {(projects ?? []).length === 0 && (
+              {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted">
                     Sin proyectos {status ? "con ese estado" : "todavía"}.
@@ -190,7 +203,7 @@ export default async function ProyectosPage({
                 </tr>
               )}
             </tbody>
-            {(projects ?? []).length > 0 && (
+            {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t border-line-2 text-xs uppercase tracking-wide">
                   <td colSpan={4} className="px-4 py-3 text-muted">

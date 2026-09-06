@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getConnector, hasCredential } from "@/lib/connectors";
 import { createProvider, updateProvider, syncProvider } from "./actions";
+import { SearchInput, matches } from "@/components/search-input";
 import { SubmitButton } from "@/components/submit-button";
 
 const CATEGORIES = [
@@ -32,9 +33,9 @@ function monthly(cost: number | null, cycle: string): number {
 export default async function ProveedoresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ synced?: string; syncError?: string }>;
+  searchParams: Promise<{ synced?: string; syncError?: string; q?: string }>;
 }) {
-  const { synced, syncError } = await searchParams;
+  const { synced, syncError, q } = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -45,6 +46,10 @@ export default async function ProveedoresPage({
     )
     .is("deleted_at", null)
     .order("name");
+
+  const filtered = (providers ?? []).filter((p) =>
+    matches(q, p.name, p.category, p.billing_model, p.contract_context, p.payment_method, p.integration_key)
+  );
 
   return (
     <div>
@@ -65,9 +70,13 @@ export default async function ProveedoresPage({
         </p>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="mt-4">
+        <SearchInput placeholder="Buscar proveedor, categoría, forma de pago…" />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
-          {(providers ?? []).map((p) => {
+          {filtered.map((p) => {
             const assets = ((p.assets ?? []) as Asset[]).filter(
               (a) => !(a as Asset & { deleted_at: string | null }).deleted_at
             );
