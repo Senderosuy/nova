@@ -10,51 +10,114 @@ type Zone = {
   plan?: { name?: string };
 };
 
+type RegistrarDomain = {
+  name: string;
+  expires_at: string | null;
+  auto_renew: boolean;
+  last_known_status: string | null;
+};
+
+async function call<T>(path: string, token: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Cloudflare respondió ${res.status} en ${path}`);
+  const body = (await res.json()) as { success: boolean; result: T };
+  if (!body.success) throw new Error(`Cloudflare rechazó la consulta ${path}`);
+  return body.result;
+}
+
 /**
- * Cloudflare: trae las zonas (dominios gestionados por DNS/CDN).
- * Las zonas del plan Free se registran con billing_cycle 'gratis' y
- * costo 0 — no inflan el costo recurrente de ningún proyecto.
+ * Cloudflare aporta dos cosas distintas:
+ *  - Registrar: dominios propios, con vencimiento y autorrenovación.
+ *  - Zonas: DNS/CDN, que pueden pertenecer a dominios registrados afuera.
+ * Un dominio del registrador se guarda como 'dominio' con su vencimiento;
+ * la zona de un dominio externo, como herramienta con costo cero si es Free.
  */
 export const cloudflareConnector: ProviderConnector = {
   key: "cloudflare",
   label: "Cloudflare",
   envVar: "CLOUDFLARE_API_TOKEN",
-  capabilities: ["Zonas DNS activas", "Plan de cada zona (Free / de pago)"],
+  capabilities: [
+    "Dominios del registrador con vencimiento",
+    "Zonas DNS y plan de cada una",
+  ],
 
   async sync(supabase: SupabaseClient, providerId: string): Promise<SyncResult> {
     const token = process.env.CLOUDFLARE_API_TOKEN;
     if (!token) throw new MissingCredentialError("CLOUDFLARE_API_TOKEN");
 
-    const res = await fetch(`${BASE}/zones?per_page=200`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`Cloudflare respondió ${res.status} al listar zonas.`);
+    const accounts = await call<{ id: string }[]>("/accounts", token);
+    const accountId = accounts[0]?.id;
+    if (!accountId) throw new Error("La credencial no tiene ninguna cuenta asociada.");
 
-    const body = (await res.json()) as { success: boolean; result: Zone[] };
-    if (!body.success) throw new Error("Cloudflare rechazó la consulta de zonas.");
+    const [zones, domains] = await Promise.all([
+      call<Zone[]>("/zones?per_page=200", token),
+      call<RegistrarDomain[]>(`/accounts/${accountId}/registrar/domains`, token).catch(
+        () => [] as RegistrarDomain[]
+      ),
+    ]);
 
     const { data: existing } = await supabase
       .from("assets")
-      .select("id,identifier")
+      .select("id,identifier,cost")
       .eq("provider_id", providerId);
 
-    const byIdentifier = new Map((existing ?? []).map((a) => [a.identifier, a.id]));
+    const byIdentifier = new Map(
+      (existing ?? []).map((a) => [a.identifier, { id: a.id, cost: a.cost }])
+    );
+    const registered = new Set(domains.map((d) => d.name));
 
     let created = 0;
     let updated = 0;
 
-    for (const z of body.result) {
+    // 1. Dominios registrados en Cloudflare: vencimiento y autorrenovación reales
+    for (const d of domains) {
+      const expires = d.expires_at ? d.expires_at.slice(0, 10) : null;
+      const found = byIdentifier.get(d.name);
+      const notes = `Cloudflare Registrar · ${d.last_known_status ?? "?"}${
+        d.auto_renew ? " · autorrenovación activa" : " · SIN autorrenovación"
+      }`;
+
+      if (found) {
+        const { error } = await supabase
+          .from("assets")
+          .update({ type: "dominio", expires_at: expires, notes })
+          .eq("id", found.id);
+        if (!error) updated++;
+      } else {
+        const { error } = await supabase.from("assets").insert({
+          type: "dominio",
+          name: d.name,
+          provider: "Cloudflare",
+          provider_id: providerId,
+          identifier: d.name,
+          ownership: "nova",
+          expires_at: expires,
+          currency: "USD",
+          billing_cycle: "anual",
+          notes,
+        });
+        if (!error) created++;
+      }
+    }
+
+    // 2. Zonas cuyo dominio NO está en el registrador: sólo aportan DNS
+    for (const z of zones) {
+      if (registered.has(z.name)) continue;
+
       const planName = z.plan?.name ?? "Free";
       const isFree = /free/i.test(planName);
-      const found = byIdentifier.get(z.name);
+      const identifier = `dns:${z.name}`;
+      const found = byIdentifier.get(identifier);
       const payload = {
-        notes: `Zona Cloudflare · plan ${planName} · estado ${z.status}`,
+        notes: `Zona Cloudflare · plan ${planName} · ${z.status}`,
         billing_cycle: isFree ? "gratis" : "mensual",
       };
 
       if (found) {
-        const { error } = await supabase.from("assets").update(payload).eq("id", found);
+        const { error } = await supabase.from("assets").update(payload).eq("id", found.id);
         if (!error) updated++;
       } else {
         const { error } = await supabase.from("assets").insert({
@@ -62,7 +125,7 @@ export const cloudflareConnector: ProviderConnector = {
           name: `DNS ${z.name}`,
           provider: "Cloudflare",
           provider_id: providerId,
-          identifier: z.name,
+          identifier,
           ownership: "nova",
           cost: isFree ? 0 : null,
           currency: "USD",
@@ -72,13 +135,14 @@ export const cloudflareConnector: ProviderConnector = {
       }
     }
 
+    const detail = `${domains.length} dominio(s) del registrador, ${zones.length} zona(s)`;
     return {
       created,
       updated,
       message:
-        body.result.length === 0
-          ? "Credencial válida, pero la cuenta no tiene zonas cargadas en Cloudflare todavía"
-          : `${created} zona(s) nueva(s), ${updated} actualizada(s)`,
+        created + updated === 0
+          ? `Credencial válida. ${detail}, nada nuevo que sincronizar`
+          : `${created} nuevo(s), ${updated} actualizado(s) · ${detail}`,
     };
   },
 };
