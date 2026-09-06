@@ -26,9 +26,24 @@ export const updateSession = async (request: NextRequest) => {
     },
   });
 
-  // Necesario para refrescar la sesión: sin esta llamada el middleware
-  // no renueva tokens expirados.
-  await supabase.auth.getClaims();
+  // Refresca la sesión y obtiene el usuario (chequeo optimista en el edge;
+  // la autorización real vive en RLS y en los layouts de servidor).
+  const { data } = await supabase.auth.getClaims();
+  const isAuthenticated = Boolean(data?.claims);
+  const { pathname } = request.nextUrl;
+  const isPublic = pathname.startsWith("/login");
+
+  if (!isAuthenticated && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (isAuthenticated && isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 };
