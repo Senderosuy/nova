@@ -1,7 +1,13 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getConnector, hasCredential } from "@/lib/connectors";
-import { createProvider, updateProvider, syncProvider, archiveProvider } from "./actions";
+import {
+  createProvider,
+  updateProvider,
+  syncProvider,
+  archiveProvider,
+  setProviderPaymentMethod,
+} from "./actions";
 import { SubmitButton } from "@/components/submit-button";
 import { SearchInput } from "@/components/search-input";
 import { matches } from "@/lib/search";
@@ -40,13 +46,16 @@ export default async function ProveedoresPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const { data: providers } = await supabase
-    .from("providers")
-    .select(
-      "id,name,website,category,billing_model,contract_context,payment_method,payment_terms,account_reference,currency,integration_key,integration_status,api_docs_url,last_synced_at,last_sync_result,assets(cost,currency,billing_cycle,deleted_at)"
+  const [{ data: providers }, { data: methods }] = await Promise.all([
+    supabase
+      .from("providers")
+      .select(
+      "id,name,website,category,billing_model,contract_context,payment_method,payment_terms,account_reference,currency,payment_method_id,integration_key,integration_status,api_docs_url,last_synced_at,last_sync_result,assets(cost,currency,billing_cycle,deleted_at)"
     )
-    .is("deleted_at", null)
-    .order("name");
+      .is("deleted_at", null)
+      .order("name"),
+    supabase.from("payment_methods").select("id,label").eq("active", true).order("label"),
+  ]);
 
   const filtered = (providers ?? []).filter((p) =>
     matches(q, p.name, p.category, p.billing_model, p.contract_context, p.payment_method, p.integration_key)
@@ -201,6 +210,37 @@ export default async function ProveedoresPage({
                     </div>
                   );
                 })()}
+
+                <form
+                  action={setProviderPaymentMethod.bind(null, p.id)}
+                  className="mt-3 flex flex-col gap-2 rounded-lg border border-line bg-ink px-4 py-3 sm:flex-row sm:items-end"
+                >
+                  <label className="flex-1 text-xs font-medium uppercase tracking-wide text-muted">
+                    Método de pago
+                    <select
+                      name="payment_method_id"
+                      defaultValue={p.payment_method_id ?? ""}
+                      className={inputCls + " mt-1"}
+                    >
+                      <option value="">— sin método —</option>
+                      {(methods ?? []).map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-muted sm:pb-2">
+                    <input type="checkbox" name="propagate" defaultChecked className="accent-[color:var(--accent)]" />
+                    Aplicar a sus {assets.length} activo(s)
+                  </label>
+                  <SubmitButton
+                    className="rounded-lg border border-line-2 px-3 py-2 text-sm text-muted hover:border-accent hover:text-accent"
+                    pendingLabel="Aplicando…"
+                  >
+                    Asignar
+                  </SubmitButton>
+                </form>
 
                 <details className="mt-3">
                   <summary className="cursor-pointer text-xs text-muted hover:text-accent">

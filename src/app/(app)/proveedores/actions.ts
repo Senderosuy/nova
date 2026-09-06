@@ -142,3 +142,55 @@ export async function archiveProvider(providerId: string): Promise<void> {
   revalidatePath("/proveedores");
   redirect("/proveedores?synced=Proveedor%20archivado");
 }
+
+/**
+ * Fija el método de pago del proveedor y lo propaga a sus activos.
+ * Evita tener que editar decenas de activos uno por uno: en la práctica
+ * todo lo que se contrata a un proveedor se paga por el mismo medio.
+ */
+export async function setProviderPaymentMethod(
+  providerId: string,
+  formData: FormData
+): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const methodId = String(formData.get("payment_method_id") ?? "").trim() || null;
+  const propagate = formData.get("propagate") === "on";
+
+  const { error } = await supabase
+    .from("providers")
+    .update({ payment_method_id: methodId })
+    .eq("id", providerId);
+
+  if (error) throw new Error(`No se pudo asignar el método: ${error.message}`);
+
+  let touched = 0;
+  if (propagate && methodId) {
+    const { data, error: e2 } = await supabase
+      .from("assets")
+      .update({ payment_method_id: methodId })
+      .eq("provider_id", providerId)
+      .is("deleted_at", null)
+      .select("id");
+
+    if (e2) throw new Error(`No se pudieron actualizar los activos: ${e2.message}`);
+    touched = data?.length ?? 0;
+
+    await supabase
+      .from("recurring_services")
+      .update({ payment_method_id: methodId })
+      .eq("provider_id", providerId)
+      .eq("active", true);
+  }
+
+  revalidatePath("/proveedores");
+  revalidatePath("/finanzas");
+  redirect(
+    `/proveedores?synced=${encodeURIComponent(
+      propagate && methodId
+        ? `Método asignado y propagado a ${touched} activo(s)`
+        : "Método asignado al proveedor"
+    )}`
+  );
+}
