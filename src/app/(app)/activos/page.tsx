@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createAsset } from "./actions";
 import { SearchInput } from "@/components/search-input";
+import { AssetEditor } from "@/components/asset-editor";
 import { matches } from "@/lib/search";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -47,7 +48,7 @@ export default async function ActivosPage({
     supabase
       .from("assets")
       .select(
-        "id,type,name,provider,identifier,ownership,cost,currency,billing_cycle,expires_at"
+        "id,type,name,provider,provider_id,identifier,ownership,cost,currency,billing_cycle,expires_at,paid_at,notes"
       )
       .is("deleted_at", null)
       .order("expires_at", { ascending: true, nullsFirst: false }),
@@ -90,6 +91,7 @@ export default async function ActivosPage({
                 <th className="px-4 py-3 font-medium">Proveedor</th>
                 <th className="px-4 py-3 font-medium">Costo neto</th>
                 <th className="px-4 py-3 font-medium">Vence</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -106,11 +108,14 @@ export default async function ActivosPage({
                   <td className="px-4 py-3">
                     <ExpiryBadge expires={a.expires_at} />
                   </td>
+                  <td className="px-4 py-3 align-top">
+                    <AssetEditor asset={a} providers={providers ?? []} />
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted">
                     Sin activos. Sincronizá Hostinger o cargá uno manual.
                   </td>
                 </tr>

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { assignAsset, unassignAsset, updateProjectStatus } from "./actions";
+import { AssetEditor } from "@/components/asset-editor";
 import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
@@ -26,7 +27,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: costs }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -37,7 +38,7 @@ export default async function ProyectoDetailPage({
       supabase
         .from("asset_assignments")
         .select(
-          "id,assigned_from,assigned_until,assets(id,name,type,provider,expires_at,cost,currency,billing_cycle)"
+          "id,assigned_from,assigned_until,assets(id,name,type,provider,provider_id,identifier,ownership,expires_at,paid_at,notes,cost,currency,billing_cycle)"
         )
         .eq("project_id", id)
         .order("assigned_from", { ascending: false }),
@@ -52,6 +53,7 @@ export default async function ProyectoDetailPage({
         .eq("project_id", id)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase.from("providers").select("id,name").is("deleted_at", null).order("name"),
       supabase
         .from("project_costs")
         .select("currency,net_monthly,net_yearly")
@@ -183,7 +185,12 @@ export default async function ProyectoDetailPage({
                   name: string;
                   type: string;
                   provider: string | null;
+                  provider_id: string | null;
+                  identifier: string | null;
+                  ownership: string;
                   expires_at: string | null;
+                  paid_at: string | null;
+                  notes: string | null;
                   cost: number | null;
                   currency: string;
                   billing_cycle: string;
@@ -206,12 +213,15 @@ export default async function ProyectoDetailPage({
                           : " · sin costo"}
                       </span>
                     </div>
+                    <div className="flex shrink-0 items-start gap-4">
+                    <AssetEditor asset={asset} providers={providers ?? []} />
                     <form action={unassignAsset.bind(null, project.id, a.id)}>
                       <SubmitButton
                         className="text-xs text-muted hover:text-violet"
                         title="Finaliza la asignación (el activo sigue en inventario)"
                        pendingLabel="Quitando…">Desasignar</SubmitButton>
                     </form>
+                    </div>
                   </li>
                 );
               })}
