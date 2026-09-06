@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { assignAsset, unassignAsset, updateProjectStatus } from "./actions";
 import { AssetEditor } from "@/components/asset-editor";
 import { RevenuePanel } from "@/components/revenue-panel";
+import { CostBreakdown } from "@/components/cost-breakdown";
 import { SubmitButton } from "@/components/submit-button";
 
 const STATUSES = [
@@ -29,7 +30,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: events }, { data: providers }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -73,6 +74,11 @@ export default async function ProyectoDetailPage({
         .from("service_catalog")
         .select("id,concept,reference_price,currency,kind")
         .order("concept"),
+      supabase
+        .from("project_line_items")
+        .select("*")
+        .eq("project_id", id)
+        .order("margin_usd_year"),
       supabase
         .from("project_margin")
         .select("year,revenue_usd,cost_usd,margin_usd,margin_pct")
@@ -207,6 +213,10 @@ export default async function ProyectoDetailPage({
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="mb-6">
+            <CostBreakdown items={(lineItems ?? []) as never} />
           </div>
 
           <div className="mb-6">
