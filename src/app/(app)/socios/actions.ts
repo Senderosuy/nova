@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 
+/**
+ * Registra un retiro. La amortización devuelve capital y baja el saldo;
+ * la utilidad reparte ganancia y no toca el aporte pendiente.
+ */
 export async function registerRepayment(
   partnerId: string,
   formData: FormData
@@ -18,6 +22,8 @@ export async function registerRepayment(
     partner_id: partnerId,
     amount,
     currency: String(formData.get("currency") ?? "USD"),
+    kind: String(formData.get("kind") ?? "amortizacion"),
+    period: String(formData.get("period") ?? "").trim() || null,
     paid_on:
       String(formData.get("paid_on") ?? "").trim() ||
       new Date().toISOString().slice(0, 10),

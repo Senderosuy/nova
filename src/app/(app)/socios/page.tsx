@@ -27,15 +27,17 @@ export default async function SociosPage() {
     { data: repayments },
     { data: sust },
     { data: settings },
+    { data: waterfall },
     { data: methods },
   ] = await Promise.all([
     supabase.from("partner_account").select("*").order("contributed_usd", { ascending: false }),
     supabase
       .from("partner_repayments")
-      .select("id,partner_id,amount,currency,paid_on,notes")
+      .select("id,partner_id,amount,currency,paid_on,notes,kind,period")
       .order("paid_on", { ascending: false }),
     supabase.from("sustainability").select("*").single(),
     supabase.from("app_settings").select("key,value"),
+    supabase.from("profit_waterfall").select("*").single(),
     supabase
       .from("payment_methods")
       .select("label,owner_partner_id")
@@ -186,6 +188,53 @@ export default async function SociosPage() {
           </li>
         </ol>
 
+        <div className="mt-5 rounded-lg border border-line bg-ink p-4">
+          <p className="text-xs uppercase tracking-wide text-muted">
+            Situación actual
+          </p>
+          <dl className="mt-2 space-y-1 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted">Resultado acumulado</dt>
+              <dd
+                className={
+                  Number(waterfall?.accumulated_result_usd ?? 0) >= 0
+                    ? "text-accent"
+                    : "text-violet"
+                }
+              >
+                {usd(waterfall?.accumulated_result_usd)}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">Reserva a cubrir</dt>
+              <dd>{usd(waterfall?.reserve_target_usd)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-line pt-1">
+              <dt className="text-muted">Excedente disponible</dt>
+              <dd>{usd(waterfall?.surplus_usd)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">→ a amortizar ({amortPct}%)</dt>
+              <dd className="text-accent">{usd(waterfall?.to_amortize_usd)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">→ a repartir</dt>
+              <dd className="text-accent">{usd(waterfall?.to_distribute_usd)}</dd>
+            </div>
+          </dl>
+          {Number(waterfall?.surplus_usd ?? 0) === 0 && (
+            <p className="mt-3 text-xs text-muted">
+              Todavía no hay excedente: primero hay que cubrir el resultado negativo
+              acumulado y la reserva de caja.
+            </p>
+          )}
+          {Number(waterfall?.to_distribute_usd ?? 0) > 0 && (
+            <p className="mt-3 text-xs text-muted">
+              El reparto se divide según la participación de cada socio.
+            </p>
+          )}
+        </div>
+
         <form
           action={updateCascadeSettings}
           className="mt-5 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-end"
@@ -279,6 +328,7 @@ export default async function SociosPage() {
                     <li key={r.id} className="flex items-center justify-between">
                       <span className="text-muted">
                         {r.paid_on} · {r.currency} {Number(r.amount).toLocaleString("es-UY")}
+                        {r.kind === "utilidad" ? " · utilidad" : " · amortización"}
                       </span>
                       <form action={deleteRepayment.bind(null, r.id)}>
                         <SubmitButton className="text-muted hover:text-violet" pendingLabel="…">
@@ -290,15 +340,33 @@ export default async function SociosPage() {
                 </ul>
               )}
 
-              {Number(a.balance_usd) > 0 && (
+              {(a.distributed_usd ?? 0) > 0 && (
+                <p className="mt-2 text-xs text-muted">
+                  Utilidades retiradas: {usd(a.distributed_usd)}
+                </p>
+              )}
+
+              {(
                 <details className="mt-3 border-t border-line pt-3">
                   <summary className="cursor-pointer text-xs text-accent">
-                    Registrar amortización
+                    Registrar retiro
                   </summary>
                   <form
                     action={registerRepayment.bind(null, a.partner_id)}
                     className="mt-3 grid gap-3 sm:grid-cols-2"
                   >
+                    <label className={`${labelCls} sm:col-span-2`}>
+                      Tipo de retiro
+                      <select name="kind" defaultValue="amortizacion" className={inputCls}>
+                        <option value="amortizacion">
+                          Amortización — devuelve capital, baja el saldo
+                        </option>
+                        <option value="utilidad">
+                          Utilidad — reparto de ganancias
+                        </option>
+                      </select>
+                    </label>
+
                     <label className={labelCls}>
                       Importe
                       <input name="amount" type="number" step="0.01" required className={inputCls} />
@@ -311,7 +379,12 @@ export default async function SociosPage() {
                 <option value="BRL">BRL</option>
                       </select>
                     </label>
-                    <label className={`${labelCls} sm:col-span-2`}>
+                    <label className={labelCls}>
+                      Período <span className="normal-case">(opcional)</span>
+                      <input name="period" placeholder="2027-01" className={inputCls} />
+                    </label>
+
+                    <label className={labelCls}>
                       Fecha
                       <input
                         name="paid_on"
@@ -324,7 +397,7 @@ export default async function SociosPage() {
                       className="rounded-lg bg-accent px-4 py-2 font-display text-sm font-semibold text-ink hover:opacity-90 sm:col-span-2"
                       pendingLabel="Registrando…"
                     >
-                      Registrar
+                      Registrar retiro
                     </SubmitButton>
                   </form>
                 </details>
