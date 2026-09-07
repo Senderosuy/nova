@@ -13,6 +13,7 @@ const NAV = [
   { href: "/alertas", label: "Alertas" },
   { href: "/monitoreo", label: "Monitoreo" },
   { href: "/oportunidades", label: "Oportunidades" },
+  { href: "/cobranzas", label: "Cobranzas" },
   { href: "/finanzas", label: "Finanzas" },
   { href: "/metodos-pago", label: "Métodos de pago" },
   { href: "/colaboradores", label: "Colaboradores" },
