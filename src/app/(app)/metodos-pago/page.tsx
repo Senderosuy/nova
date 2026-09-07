@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { SubmitButton } from "@/components/submit-button";
@@ -93,9 +94,12 @@ export default async function MetodosPagoPage() {
                   <div className="text-right">
                     {t ? (
                       <>
-                        <p className="font-display text-sm text-accent">
+                        <Link
+                          href={`/finanzas/movimientos?anio=${year}&metodo=${encodeURIComponent(m.label)}`}
+                          className="font-display text-sm text-accent hover:underline"
+                        >
                           USD {t.usd.toLocaleString("es-UY")}
-                        </p>
+                        </Link>
                         <p className="text-xs text-muted">
                           {t.n} movimiento{t.n === 1 ? "" : "s"} en {year}
                         </p>

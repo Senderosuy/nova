@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { SubmitButton } from "@/components/submit-button";
@@ -94,7 +95,13 @@ export default async function FinanzasPage({
             muestra separado del costo de los proyectos.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/finanzas/movimientos?anio=${year}`}
+            className="rounded-full border border-accent/40 bg-accent-dim px-3 py-1 text-xs text-accent hover:border-accent"
+          >
+            Ver movimientos
+          </Link>
           {years.map((y) => (
             <a
               key={y}
@@ -154,8 +161,15 @@ export default async function FinanzasPage({
           </thead>
           <tbody>
             {(monthly ?? []).map((m) => (
-              <tr key={m.period} className="border-b border-line last:border-0">
-                <td className="px-4 py-3">{MONTHS[new Date(m.period).getUTCMonth()]}</td>
+              <tr key={m.period} className="border-b border-line last:border-0 hover:bg-ink">
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/finanzas/movimientos?desde=${m.period}&hasta=${new Date(new Date(m.period).getUTCFullYear(), new Date(m.period).getUTCMonth() + 1, 0).toISOString().slice(0, 10)}`}
+                    className="hover:text-accent"
+                  >
+                    {MONTHS[new Date(m.period).getUTCMonth()]}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-right text-accent">{usd(m.revenue_usd)}</td>
                 <td className="px-4 py-3 text-right">{usd(m.expense_usd)}</td>
                 <td className="px-4 py-3 text-right text-muted">{usd(m.overhead_usd)}</td>
@@ -185,9 +199,14 @@ export default async function FinanzasPage({
           <h2 className="font-display text-base font-semibold">Gasto por categoría</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {(byCategory ?? []).map((c) => (
-              <li key={c.category_id} className="flex justify-between">
-                <span className="text-muted">{c.name}</span>
-                <span>{usd(c.usd_total)}</span>
+              <li key={c.category_id}>
+                <Link
+                  href={`/finanzas/movimientos?anio=${year}&categoria=${encodeURIComponent(c.name)}`}
+                  className="flex justify-between rounded-lg px-2 py-1 -mx-2 hover:bg-ink"
+                >
+                  <span className="text-muted">{c.name}</span>
+                  <span>{usd(c.usd_total)}</span>
+                </Link>
               </li>
             ))}
             {(byCategory ?? []).length === 0 && (
@@ -200,9 +219,14 @@ export default async function FinanzasPage({
           <h2 className="font-display text-base font-semibold">Gasto por método de pago</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {[...methodTotals.entries()].map(([label, total]) => (
-              <li key={label} className="flex justify-between">
-                <span className="text-muted">{label}</span>
-                <span>{usd(total)}</span>
+              <li key={label}>
+                <Link
+                  href={`/finanzas/movimientos?anio=${year}&metodo=${encodeURIComponent(label)}`}
+                  className="flex justify-between rounded-lg px-2 py-1 -mx-2 hover:bg-ink"
+                >
+                  <span className="text-muted">{label}</span>
+                  <span>{usd(total)}</span>
+                </Link>
               </li>
             ))}
             {methodTotals.size === 0 && (
