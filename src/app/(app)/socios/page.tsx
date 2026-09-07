@@ -52,6 +52,9 @@ export default async function SociosPage() {
   const revenue = Number(sust?.recurring_revenue_usd ?? 0);
   const gap = Number(sust?.gap_usd ?? 0);
   const coverage = Number(sust?.coverage_pct ?? 0);
+  const projRevenue = Number(sust?.projected_revenue_usd ?? 0);
+  const projCoverage = Number(sust?.projected_coverage_pct ?? 0);
+  const projGap = Number(sust?.projected_gap_usd ?? 0);
   const reserveTarget = Number(sust?.reserve_target_usd ?? 0);
 
   // Cuántas anualidades de referencia faltan para cerrar la brecha
@@ -74,7 +77,9 @@ export default async function SociosPage() {
           <h2 className="font-display text-base font-semibold">
             ¿Nova se sostiene sola?
           </h2>
-          <span className="text-xs text-muted">solo ingresos y egresos recurrentes</span>
+          <span className="text-xs text-muted">
+            comprometido = el cliente ya confirmó que sigue
+          </span>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -85,10 +90,15 @@ export default async function SociosPage() {
             </p>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted">Ingresos recurrentes</p>
+            <p className="text-xs uppercase tracking-wide text-muted">Ingreso comprometido</p>
             <p className="mt-1 font-display text-xl font-semibold text-accent">
               {usd(revenue)}<span className="text-sm font-normal text-muted">/mes</span>
             </p>
+            {projRevenue > revenue && (
+              <p className="text-xs text-muted">
+                {usd(projRevenue)} si confirman todos
+              </p>
+            )}
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-muted">Brecha</p>
@@ -118,6 +128,13 @@ export default async function SociosPage() {
             style={{ width: `${Math.min(coverage, 100)}%` }}
           />
         </div>
+
+        {projCoverage > coverage && (
+          <p className="mt-2 text-xs text-muted">
+            Proyectado con todas las anualidades confirmadas: {projCoverage}% de
+            cobertura, brecha {usd(projGap)}/mes.
+          </p>
+        )}
 
         <p className="mt-3 text-sm text-muted">
           {gap >= 0 ? (

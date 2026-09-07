@@ -132,7 +132,7 @@ export default async function DashboardPage() {
           value={`${coverage}%`}
           hint={
             gap < 0
-              ? `faltan USD ${usd(-gap, 0)}/mes · ${annualitiesNeeded} anualidades`
+              ? `confirmado · faltan USD ${usd(-gap, 0)}/mes`
               : "Nova cubre sus gastos fijos"
           }
           tone={coverage >= 100 ? "accent" : "violet"}
