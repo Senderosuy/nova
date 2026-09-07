@@ -41,7 +41,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: takenAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: outflows }, { data: ownedMethods }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: takenAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: funding }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -101,14 +101,9 @@ export default async function ProyectoDetailPage({
         .eq("project_id", id)
         .maybeSingle(),
       supabase
-        .from("cash_movements")
-        .select("usd,direction,payment_method_id,occurred_on")
-        .eq("project_id", id)
-        .eq("direction", "egreso"),
-      supabase
-        .from("payment_methods")
-        .select("id,owner_partner_id,partners(name)")
-        .not("owner_partner_id", "is", null),
+        .from("project_funding")
+        .select("partner_name,usd")
+        .eq("project_id", id),
       supabase
         .from("project_investment")
         .select("invested_total_usd,invested_year_usd,returned_total_usd,net_position_usd")
@@ -129,24 +124,9 @@ export default async function ProyectoDetailPage({
 
   if (!project) notFound();
 
-  const today = new Date().toISOString().slice(0, 10);
-  const ownerOf = new Map(
-    (ownedMethods ?? []).map((m) => {
-      const rel = m.partners as unknown as { name: string } | { name: string }[] | null;
-      const one = Array.isArray(rel) ? rel[0] : rel;
-      return [m.id, one?.name ?? "socio"];
-    })
-  );
-  const fundedMap = new Map<string, number>();
-  for (const mv of outflows ?? []) {
-    if (!mv.payment_method_id || mv.occurred_on > today) continue;
-    const who = ownerOf.get(mv.payment_method_id);
-    if (!who) continue;
-    fundedMap.set(who, (fundedMap.get(who) ?? 0) + Number(mv.usd));
-  }
-  const fundedBy = [...fundedMap.entries()].map(([name, usd]) => ({
-    name,
-    usd: Math.round(usd * 100) / 100,
+  const fundedBy = (funding ?? []).map((f) => ({
+    name: f.partner_name as string,
+    usd: Number(f.usd),
   }));
 
   const clientRel = project.clients as unknown as
