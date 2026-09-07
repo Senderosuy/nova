@@ -62,7 +62,7 @@ export default async function ProyectosPage({
     return Array.isArray(rel) ? rel[0]?.name : rel?.name;
   };
   const filtered = (projects ?? []).filter((p) =>
-    matches(q, p.name, p.type, p.status, p.production_url, clientNameOf(p))
+    matches(q, p.name, p.type, p.status, p.brand, p.production_url, clientNameOf(p))
   );
 
   type Cell = { revenue: number; cost: number; margin: number };
@@ -150,6 +150,7 @@ export default async function ProyectosPage({
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Proyecto</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="hidden sm:table-cell px-4 py-3 font-medium">Marca</th>
                 <th className="hidden sm:table-cell px-4 py-3 font-medium">Tipo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium" title="Completitud de la ficha técnica">Ficha</th>
@@ -263,7 +264,7 @@ export default async function ProyectosPage({
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t border-line-2 text-xs uppercase tracking-wide">
-                  <td colSpan={6} className="px-4 py-3 text-muted">
+                  <td colSpan={7} className="px-4 py-3 text-muted">
                     Margen total
                   </td>
                   <td className="px-4 py-3 text-right font-display text-sm font-semibold text-cream">
