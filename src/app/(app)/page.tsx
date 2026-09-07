@@ -72,6 +72,7 @@ export default async function DashboardPage() {
     { data: sust },
     { data: monthly },
     { data: partners },
+    { data: siteAlerts },
     { data: orphanAssets },
     { data: techStatus },
   ] = await Promise.all([
@@ -80,6 +81,7 @@ export default async function DashboardPage() {
     supabase.from("sustainability").select("*").single(),
     supabase.from("finance_monthly").select("*").eq("period", thisMonth).maybeSingle(),
     supabase.from("partner_account").select("name,balance_usd").gt("balance_usd", 0),
+    supabase.from("monitor_status").select("monitor_id,label,url,status,last_error,down_minutes").in("status",["caido","sospecha"]),
     supabase.from("unassigned_assets").select("id,cost_reason"),
     supabase
       .from("project_tech_status")
@@ -117,6 +119,27 @@ export default async function DashboardPage() {
       <p className="mt-1 text-sm text-muted">
         {MONTHS[now.getMonth()]} de {now.getFullYear()}
       </p>
+
+      {(siteAlerts ?? []).filter((s) => s.status === "caido").length > 0 && (
+        <Link
+          href="/monitoreo"
+          className="mt-5 block rounded-[18px] border border-violet bg-violet/10 p-5 hover:bg-violet/20"
+        >
+          <p className="font-display text-base font-semibold text-violet">
+            {(siteAlerts ?? []).filter((s) => s.status === "caido").length} sitio(s) caído(s)
+          </p>
+          <ul className="mt-2 space-y-1 text-sm">
+            {(siteAlerts ?? [])
+              .filter((s) => s.status === "caido")
+              .map((s) => (
+                <li key={s.monitor_id} className="text-cream">
+                  {s.label}
+                  <span className="text-violet"> · {s.last_error ?? "sin respuesta"}</span>
+                </li>
+              ))}
+          </ul>
+        </Link>
+      )}
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card

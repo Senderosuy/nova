@@ -11,6 +11,7 @@ const NAV = [
   { href: "/activos", label: "Activos" },
   { href: "/proveedores", label: "Proveedores" },
   { href: "/alertas", label: "Alertas" },
+  { href: "/monitoreo", label: "Monitoreo" },
   { href: "/finanzas", label: "Finanzas" },
   { href: "/metodos-pago", label: "Métodos de pago" },
   { href: "/colaboradores", label: "Colaboradores" },
