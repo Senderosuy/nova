@@ -88,7 +88,6 @@ export default async function DashboardPage() {
 
   const gap = Number(sust?.gap_usd ?? 0);
   const coverage = Number(sust?.coverage_pct ?? 0);
-  const annualitiesNeeded = gap < 0 ? Math.ceil((-gap * 12) / 160) : 0;
 
   const next90 = (renewals ?? []).filter((r) => Number(r.days_left) <= 90);
   const renewalCost = next90.reduce((s, r) => s + Number(r.usd_amount ?? 0), 0);

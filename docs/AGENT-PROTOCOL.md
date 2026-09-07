@@ -106,6 +106,7 @@ Este proyecto tiene una regla dura: **nada se da por hecho sin salida real de co
 | "está desplegado" | `npx -y vercel ls` → estado `Ready` |
 | "la página anda" | request HTTP real; el build no detecta errores de runtime |
 | "la API responde" | llamada real y leer el cuerpo, no solo el código HTTP |
+| "las vistas financieras son coherentes" | `npm run audit` — toda fila INCOHERENTE es un bug |
 
 **Caso real que justifica esto:** el build pasó en verde y producción devolvía 500,
 porque una función exportada desde un archivo `"use client"` no puede invocarse desde un
@@ -144,11 +145,12 @@ src/components/           ← componentes compartidos
 
 1. `npm run build` en verde.
 2. Commit + push.
-3. **Actualizá `docs/SPEC.md`** si cambiaste el modelo de datos, la lógica de negocio,
+3. **Si tocaste vistas financieras, corré `npm run audit`** y resolvé toda incoherencia.
+4. **Actualizá `docs/SPEC.md`** si cambiaste el modelo de datos, la lógica de negocio,
    agregaste una integración o completaste una etapa del roadmap. El spec desactualizado
    es peor que no tenerlo.
-4. `npm run agent:release`.
-5. Si dejás algo a medias, escribilo en `.agent/NOTES.md` con suficiente contexto para
+5. `npm run agent:release`.
+6. Si dejás algo a medias, escribilo en `.agent/NOTES.md` con suficiente contexto para
    que otro lo retome sin leer todo el código.
 
 ## 9. Contexto de negocio que conviene entender

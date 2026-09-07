@@ -2,23 +2,23 @@
 
 > **Documento de referencia único.** Si vas a tocar el código, leé esto primero.
 > Evita tener que reconstruir la lógica leyendo archivos sueltos.
-> Última actualización: 2026-09-07
+> Última actualización: 2026-09-07 (cierre de sesión, auditoría completa)
 
 ---
 
 ## 1. Qué es y qué no es
 
-**Nova Tech Hub** es el sistema nervioso interno de **Latam Nova Group System**: memoria
-técnica de proyectos, catálogo de activos, condiciones con proveedores, costeo neto,
-ingresos, margen por proyecto, finanzas de la empresa y motor de alertas.
+**Nova Tech Hub** es el sistema nervioso interno de **LatamNova Group SAS**: memoria
+técnica de proyectos, catálogo de activos, proveedores, costeo neto, ingresos, margen,
+finanzas de la empresa, socios, colaboradores, horas de trabajo y motor de alertas.
 
-**NO es** un CRM (sin pipeline ni leads), **NO es** un ERP ni un sistema contable
-(sin facturación fiscal, IVA, conciliación bancaria ni plan de cuentas), **NO es** un
-gestor de tareas, **NO es** un portal de clientes. Responde *"¿cómo venimos?"*, no
-reemplaza al contador. Toda feature nueva se contrasta contra esta frontera.
+**NO es** un CRM, **NO es** un ERP ni sistema contable (sin facturación fiscal, IVA,
+conciliación ni plan de cuentas), **NO es** un gestor de tareas, **NO es** un portal de
+clientes. Responde *"¿cómo venimos?"*, no reemplaza al contador.
 
-**Regla transversal:** los costos netos son **información interna**. Nunca se exponen al
-cliente. El precio al cliente vive en un campo distinto del costo.
+**Regla transversal:** los costos netos, márgenes, aportes y horas son **información
+interna**. La única excepción explícita es el panel "Lo que paga el cliente", marcado
+como compartible.
 
 ## 2. Stack y despliegue
 
@@ -26,33 +26,34 @@ cliente. El precio al cliente vive en un campo distinto del costo.
 |---|---|
 | Frontend | Next.js 16.3.4 (App Router, RSC), React 19, TypeScript, Tailwind 4 |
 | Backend | Supabase — Postgres 17, Auth, RLS, `pg_cron` |
-| Hosting | Vercel (auto-deploy en push a `main`) |
+| Hosting | Vercel (auto-deploy en push a `main`) + Vercel Cron |
 | Dominio | https://hub.latamnova.app |
-| Repo | https://github.com/Senderosuy/nova |
-| Proyecto Supabase | ref `swsdfrkkzrswjnliihxt` (West US Oregon) |
+| Repo | https://github.com/Senderosuy/nova — **⚠ todavía público, pasar a privado** |
+| Supabase | ref `swsdfrkkzrswjnliihxt` (West US Oregon) |
 
-**Convención crítica de Next 16:** el middleware es **`src/proxy.ts`** y exporta
-`proxy()`, no `middleware()`. Documentación embebida en `node_modules/next/dist/docs/`.
+**Convenciones de Next 16:** middleware = `src/proxy.ts` exportando `proxy()`. Las rutas
+`/api` están **excluidas** del guard de sesión: se autentican por su cuenta.
 
-**Frontera cliente/servidor:** la lógica pura va en `src/lib/`, sin directiva. Un helper
-exportado desde un archivo `"use client"` **no puede invocarse desde un Server Component**
-— falla en runtime, no en build. Ya pasó con `matches()`.
+**Frontera cliente/servidor:** lógica en `src/lib/` sin directiva. Un helper exportado
+desde `"use client"` no puede invocarse desde un Server Component (falla en runtime).
 
-**Vistas de Postgres:** `create or replace view` **no permite intercalar columnas nuevas
-en el medio**. Las columnas agregadas van al final, o hay drop + recreate en cascada.
-Ya pasó con `service_schedule`.
+**React 19:** no llamar `setState` dentro de `useEffect` para sincronizar props. Comparar
+durante el render y setear ahí (ver `nav.tsx`).
+
+**Postgres:** `create or replace view` **no permite intercalar columnas**. Las nuevas van
+al final o hay drop + recreate en cascada.
 
 ### Variables de entorno
 
 | Variable | Uso | Visibilidad |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | cliente y servidor | pública |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | cliente y servidor | pública |
-| `HOSTINGER_API_TOKEN` | conector Hostinger | **secreta** |
-| `CLOUDFLARE_API_TOKEN` | conector Cloudflare | **secreta** |
+| `NEXT_PUBLIC_SUPABASE_URL` / `_PUBLISHABLE_KEY` | cliente y servidor | pública |
+| `HOSTINGER_API_TOKEN`, `CLOUDFLARE_API_TOKEN` | conectores | secreta |
+| `SUPABASE_SERVICE_ROLE_KEY` | cron de sincronización de fichas | secreta, salta RLS |
+| `CRON_SECRET` | protege `/api/cron/*` | secreta |
+| `GITHUB_TOKEN` | fichas desde repos privados | secreta, opcional |
 
-En Vercel: las `NEXT_PUBLIC_*` con `--no-sensitive --visibility config`; las secretas con
-`--sensitive`. Nunca imprimir valores en chat, logs ni commits.
+Nunca imprimir valores en chat, logs ni commits.
 
 ## 3. Modelo de datos
 
@@ -60,228 +61,160 @@ En Vercel: las `NEXT_PUBLIC_*` con `--no-sensitive --visibility config`; las sec
 
 | Tabla | Rol |
 |---|---|
-| `profiles` | usuarios internos + rol (`admin` / `operador` / `lectura`) |
-| `clients` | clientes (interno/externo) |
-| `projects` | proyectos, con `ownership_type`: de cliente o **producto propio** |
-| `project_tech_profiles` | Ficha Técnica 360 — **sin UI todavía** |
-| `providers` | a quién le contratamos y en qué condiciones |
-| `assets` | activos (dominios, hosting, herramientas, licencias) |
-| `asset_assignments` | activo ↔ proyecto (N:M, con vigencia) |
-| `recurring_services` | ítems recurrentes: ingresos y egresos, de proyecto o empresa |
-| `project_charges` | movimientos únicos: ingresos y egresos, de proyecto o empresa |
-| `service_catalog` | precios de referencia (anualidad landing = USD 160) |
-| `payment_methods` | medios de pago de Nova |
-| `expense_categories` | categorías de gasto de estructura |
-| `alerts` | alertas generadas |
-| `project_events` | historial por proyecto |
-| `documents` | metadatos de archivos — **sin UI todavía** |
-| `app_settings` | configuración (`usd_uyu_rate` = 40,243) |
+| `profiles` | usuarios + rol (`admin` / `operador` / `lectura`) |
+| `clients` | clientes; entidades legales (Senderos Group SAS, Molha e Safie Ltda) |
+| `projects` | proyectos con `ownership_type` (cliente / propio), `brand`, `client_hourly_rate` |
+| `project_tech_profiles` | Ficha 360: documento completo (`doc_content`) + campos |
+| `providers` | a quién se le paga de forma sostenida, con `payment_method_id` por defecto |
+| `assets` | activos con `ownership` (nova / cliente), `cost_reason`, `registered_at`, `auto_renew` |
+| `asset_assignments` | activo ↔ proyecto con vigencia |
+| `recurring_services` | recurrentes con `direction`, `scope`, `billing_mode`, `anchor_asset_id` |
+| `project_charges` | movimientos únicos con `direction`, `scope` |
+| `payment_methods` | medios de pago con titularidad: socio / cliente / Nova |
+| `partners` | socios, participación, tipo de aporte |
+| `partner_repayments` | retiros: `amortizacion` (baja el aporte) o `utilidad` (no lo toca) |
+| `collaborators` | quién trabaja y cuánto cobra por hora |
+| `work_assignments` | trabajo asignado: por horas o por entregable |
+| `time_entries` | horas registradas |
+| `alerts` | alertas por activo, servicio o tarjeta |
+| `app_settings` | tipos de cambio, meses de reserva, % amortización |
 
-### Los dos ejes de todo movimiento
+### Los ejes que clasifican cada movimiento
 
-Cada movimiento —único o recurrente— se clasifica por:
+- **`direction`**: ingreso / egreso
+- **`scope`**: proyecto / empresa
+- **`ownership`** del activo: nova / cliente
+- **titularidad del medio de pago**: socio / cliente / Nova
 
-- **`direction`**: `ingreso` o `egreso`
-- **`scope`**: `proyecto` o `empresa` (overhead)
+### Reglas de exclusión — LEER ANTES DE TOCAR CUALQUIER VISTA
 
-Los cuatro cuadrantes usan la misma maquinaria de ciclos, monedas y proyección. Un gasto
-de contador es *egreso + empresa*; el abono de un cliente, *ingreso + proyecto*. **Se
-generalizó en vez de duplicar tablas**: por eso `project_charges` y `recurring_services`
-sirven para ambos alcances y `project_id` es opcional.
+Estas reglas deciden qué cuenta como costo de Nova. **Cada vista que suma dinero debe
+aplicarlas todas.** Hoy fallaron tres veces por aplicarlas en una vista y no en otra.
+
+| Regla | Efecto |
+|---|---|
+| `direction = 'egreso'` | solo egresos son costo; solo ingresos son ingreso |
+| `ownership = 'cliente'` | el activo es del cliente: Nova lo administra, no lo costea |
+| medio de pago con `owner_client_id` | lo pagó el cliente: no es costo ni aporte |
+| `scope = 'empresa'` | overhead, no cuelga de ningún proyecto |
+| `confirmation_status <> 'rechazada'` | un servicio rechazado no proyecta nada |
+| `first_charge_date` / `billing_mode = 'vencido'` | no contar cobros previos al primero efectivo |
+
+**Vistas que suman dinero y deben ser coherentes entre sí:** `cash_movements`, `ledger`,
+`project_costs`, `project_annual_costs`, `project_annual_revenue`, `project_line_items`,
+`sustainability`, `partner_account`, `project_funding`, `finance_monthly/yearly`.
+Verificación de coherencia: el costo de un proyecto por `project_line_items` (año en
+curso), `project_annual_costs` y `cash_movements` debe coincidir. Auditado 2026-09-07: coincide.
 
 ### Decisiones estructurales
 
-1. **Activos separados de proyectos**, vinculados por `asset_assignments` con vigencia.
-   Desasignar cierra la vigencia, no borra.
-2. **Cobro ≠ vencimiento**: `next_billing_date` (ingreso) y `expires_at` (riesgo de caída).
-3. **Costo neto vs precio al cliente**: campos distintos, el primero interno.
-4. **Soft-delete** en clients, projects, assets y providers. La memoria se archiva.
-5. **Credenciales no se almacenan**: se guarda *dónde* están.
-6. **Métodos de pago: solo últimos cuatro dígitos.** Nunca el número completo, CVV ni
-   vencimiento. Validado por constraint (`^[0-9]{4}$`) y en el formulario.
-7. **Un gasto puntual no es un activo.** Activo = se posee y se renueva. Cargo único =
-   ya ocurrió y no se repite (un stand, una compra de imágenes).
+1. Activos separados de proyectos; desasignar cierra vigencia, no borra.
+2. **Asignar un activo a un proyecto NO lo vuelve del cliente.** En las landings Nova paga
+   el dominio y lo cobra en la anualidad. `ownership` se cambia aparte.
+3. Todo activo sin proyecto declara `cost_reason`; sin causa, se marca en violeta.
+4. Soft-delete en clients, projects, assets, providers.
+5. Credenciales no se almacenan. Métodos de pago: solo últimos 4 dígitos + mes de vencimiento.
+6. Un gasto puntual no es activo: activo = se posee y renueva; cargo = ocurrió una vez.
+7. **Mientras Nova no tenga medio propio, todo egreso sin medio identificado lo cubrió el
+   socio de capital.** Se apaga solo al crear un medio de la empresa.
+8. **Socios trabajan como colaboradores y cobran por su trabajo**, aparte del aporte de capital.
+9. Marca = etiqueta transversal en el proyecto, no nivel de jerarquía. Con 2 entidades
+   legales no hace falta `parent_client_id`; se agrega cuando sean 5+.
 
-### Ciclos
+### Ciclos y monedas
 
-`mensual` · `trimestral` · `semestral` · `anual` · `unico` · `gratis`
-
-- `unico`: usa `assets.paid_at` o `charge_date` para saber en qué año impacta.
-- `gratis`: inventariado con costo 0 (zonas Cloudflare Free).
+`mensual · trimestral · semestral · anual · unico · gratis`. Monedas: USD, UYU, BRL.
+Conversión centralizada en `to_usd(amount, currency)`. Tipos de cambio en `app_settings`.
 
 ## 4. Lógica financiera
 
-### Costeo
+- **`project_annual_costs`** — año calendario, no prorratea (`payments_in_year`).
+- **`project_annual_revenue`** — cargos de ingreso + recurrentes proyectados.
+- **`project_line_items`** — desglose por ítem, base anual USD, con `paid_by_client` y
+  `reference_usd_year` para mostrar lo del cliente entre paréntesis sin sumarlo.
+- **`billing_mode`** adelantado/vencido: las landings existentes cobran a año vencido.
+- **Anualidades ancladas**: `confirm_by = expires_at − lead_days` (45). Se recalcula solo.
+- **`project_investment`** — productos propios: invertido, recuperado, posición neta.
+- **`project_funding`** — quién financió cada proyecto.
+- **`cash_movements`** — libro base; **`ledger`** = con nombres resueltos, filtrable.
+- **`sustainability`** — dos lecturas: `recurring_revenue_usd` (**comprometido**: cliente
+  confirmó) y `projected_revenue_usd` (todo lo cargado). Hoy 0% vs 17,9%.
+- **`profit_waterfall`** — cascada: reserva (2 meses) → amortización (30%) → reparto 50/50.
+  Es propuesta, no movimiento.
+- **`client_spend_items` / `_by_provider`** — lo que paga el cliente, agrupado por proveedor.
+- **`assignment_summary`, `project_work_summary`, `collaborator_account`** — horas y trabajo.
 
-- **`project_costs`** — run rate: costo normalizado mensual/anual por moneda.
-- **`project_annual_costs`** — año calendario en USD. **No prorratea**: `payments_in_year()`
-  proyecta las fechas de pago desde la renovación y cuenta las que caen en el año. Un VPS
-  bianual que vence en 2028 tiene pago en 2026 y 2028, **cero en 2027**.
+### ⚠ Brecha conocida: el trabajo está fuera del flujo de caja
 
-### Ingresos
-
-- **`project_annual_revenue`** — cargos únicos del año + recurrentes proyectados.
-- **`project_margin`** — ingreso − costo, con porcentaje.
-- **`project_line_items`** — desglose línea por línea normalizado a base anual en USD,
-  con margen por ítem. Responde "¿qué me cuesta y qué cobro por cada cosa?".
-- **`client_line_items`** — lo mismo consolidado por cliente (sin pantalla todavía).
-
-### Modalidad de cobro
-
-`billing_mode`: **adelantado** (se cobra el período que empieza) o **vencido** (se cobra
-el transcurrido; el primer cobro cae una renovación después). `payments_in_year_from()`
-ignora los cobros previos al primer cobro efectivo.
-
-**Origen real:** las landings existentes no cobraron el primer año, así que su anualidad
-se cobra en 2027. Sin esto el margen de 2026 mostraría un ingreso inexistente.
-
-### Anualidades ancladas
-
-Un ítem recurrente puede tener **`anchor_asset_id`**: su fecha se deriva del vencimiento
-del activo. `confirm_by = expires_at − lead_days` (45 por defecto). Cuando el conector
-trae la renovación nueva, la fecha de confirmación se recalcula sola.
-
-### Proyectos propios
-
-`ownership_type = 'propio'` cambia la lectura: el costo no es un problema sino
-**inversión**. `project_investment` da invertido total, invertido del año, recuperado y
-posición neta, contando **solo movimientos ya ocurridos**. Fotolink es el primer caso.
-
-### Finanzas de empresa
-
-- **`cash_movements`** — unifica únicos, recurrentes proyectados y costos de activos:
-  un renglón por ocurrencia con su fecha real.
-- **`finance_monthly` / `finance_yearly`** — resultado con el **overhead separado** del
-  costo de proyectos.
-- **`spend_by_payment_method`** — qué se paga con cada tarjeta o cuenta.
-- **`spend_by_category`** — en qué se va la estructura.
+`work_assignments` y `time_entries` **no entran en `cash_movements`**. El costo de horas no
+impacta Finanzas, ni el margen del proyecto (`project_line_items`), ni la inversión de
+Fotolink, ni el aporte del socio. Siendo la línea de negocio principal, es lo primero a
+resolver. Decisiones pendientes: ¿el costo entra cuando se registra la hora o cuando se
+paga? ¿Las horas no pagadas de los socios son deuda de Nova hacia ellos?
 
 ## 5. Motor de alertas
 
-`generate_alerts()` recorre los umbrales **90, 60, 30, 15 días**. Cron
-`nova-alerts-daily`, `0 9 * * *` UTC (06:00 Uruguay).
+`generate_alerts()` diario 09:00 UTC, umbrales 90/60/30/15. Antes, `roll_expirations()`
+08:30 avanza vencimientos de dominios con `registered_at` (aniversario) o `auto_renew`.
 
-**Cadena de renovación**, en orden causal:
+Fuentes: activos, servicios (confirmación → cobro, solo ciclos anual/semestral), tarjetas
+(con conteo de dependencias). Un rechazo cierra las alertas del servicio. Idempotente.
 
-1. **Confirmar** con el cliente (`confirm_by`) — solo ingresos de ciclo **anual o
-   semestral**: pedir confirmación con 45 días para un servicio mensual generaba alertas
-   permanentemente vencidas.
-2. **Cobrar** — solo si ya confirmó y no se cobró.
-3. **Renovar** — la alerta del activo.
+## 6. Seguridad
 
-Si el cliente **rechaza**, un trigger cierra las alertas abiertas del servicio: no tiene
-sentido avisar de renovar algo que se da de baja.
+RLS en **todas** las tablas (auditado). SELECT autenticado; INSERT/UPDATE `can_write()`;
+DELETE `is_admin()`. Usuarios: cristian@ e it@senderosgroup.com, ambos admin.
 
-**Idempotencia por índice único**: `(asset_id, threshold, due_date)` y
-`(service_id, threshold, due_date, service_stage)`. Verificado: 2ª corrida genera 0.
+**Limitación:** todos los roles ven todo. `/api/cron/*` protegido por `CRON_SECRET`.
+Sin secretos en el historial de git (auditado).
 
-## 6. Seguridad y RLS
+## 7. Integraciones
 
-RLS en todas las tablas. SELECT: cualquier autenticado. INSERT/UPDATE: `can_write()`
-(admin u operador). DELETE: `is_admin()`. Anónimos sin acceso. Las funciones son
-`security definer` para evitar recursión al consultar `profiles` desde una política.
+| Proveedor | Estado |
+|---|---|
+| Hostinger | ✅ dominios, vencimientos, precios reales |
+| Cloudflare | ✅ registrador (vencimiento, autorrenovación) + zonas |
+| nic.com.uy | ✅ fecha de alta por API pública de ANTEL; vencimiento derivado del aniversario. Captcha tras ~4 consultas: lotes de 3, se detiene al detectarlo. 7/18 con fecha |
+| GitHub | ✅ README → ficha técnica, cron diario 07:00 Vercel |
+| Lovable | ✅ lectura de proyectos vía MCP (manual, no automatizado) |
+| Google Workspace | ❌ sin API de facturación |
 
-**Limitación conocida:** todos los roles ven todo, incluidos costos netos y finanzas. No
-hay segmentación por proyecto ni ocultamiento de información sensible.
+## 8. Fichas técnicas
 
-**Alta de usuarios:** se crea en el dashboard de Supabase (Authentication → Users, con
-Auto Confirm) y se promueve por SQL sobre `profiles.role`. No hay pantalla de usuarios.
-
-## 7. Integridad: anti-duplicados
-
-**UI:** `<SubmitButton>` (`useFormStatus`) se deshabilita mientras la acción está en vuelo.
-**Base:** índices únicos parciales en projects (client+nombre), clients, assets
-(identifier), asset_assignments vigentes y recurring_services por proyecto+concepto.
-
-Origen: un doble clic creó proyectos duplicados y asignó el mismo dominio dos veces.
-
-## 8. Conectores
-
-Contrato en `src/lib/connectors/types.ts`. **Agregar un proveedor con API = crear un
-archivo + registrarlo en `index.ts` + un UPDATE en `providers`.** La UI y `syncProvider()`
-son genéricas.
-
-| Proveedor | Estado | Qué trae |
-|---|---|---|
-| Hostinger | ✅ conectada | dominios, vencimientos, **precios reales** de `/billing/v1/subscriptions` |
-| Cloudflare | ✅ conectada | dominios del registrador con vencimiento y autorrenovación, + zonas DNS |
-| Google Workspace | ❌ sin conector | no hay API de facturación para clientes directos |
-| nic.com.uy | ❌ sin API | ANTEL no expone API; queda WHOIS `whois.nic.org.uy` |
-
-**Aprendizajes de API:**
-- Los **tokens de cuenta** de Cloudflare dan 401 contra `/user/tokens/verify` aunque sean
-  válidos. Verificar contra `/accounts` o `/zones`.
-- Cloudflare devuelve **lista vacía sin error** cuando falta un permiso. Un `[]` no
-  significa "no hay datos". El permiso de zona necesita **su propia política** con alcance
-  "All zones from an account": no aparece bajo "Entire Account".
-- Hostinger no vincula suscripción con dominio: el precio se deriva **por TLD**.
-- Google: Cloud Billing API es solo GCP; Reseller API solo para revendedores. La vía
-  práctica sería importar el CSV de factura.
+El README del repo es la ficha. Si tiene secciones reconocibles, se parsean a campos.
+Completitud: 100% si hay documento; por campos si es manual. Estado: 4/5 con doc
+(Newen desde GitHub; Daniela, Rosmari y Fotolink desde Lovable). José Calisto manual pendiente.
 
 ## 9. Estado de datos (2026-09-07)
 
-- 5 clientes, 5 proyectos (Fotolink marcado **propio**), ~30 activos, 5 proveedores
-- nic.com.uy: 18 dominios `.uy` a $948 UYU/año = **$17.064 UYU/año**
-- Hostinger: 12 ítems = **USD 792,24/año** (incluye VPS KVM 4 a USD 347,88/año)
-- Cloudflare: fotolinkmedia.com USD 10,46/año, autorrenovación activa
-- Fotolink: **USD 841 invertidos**, sin retorno todavía
-- 0 alertas abiertas — el primer vencimiento es el 22/01/2027
-- **0 métodos de pago cargados** y **0 gastos de estructura**: hasta que se carguen, los
-  reportes por medio de pago y el overhead están vacíos
-- 4 cargos "Desarrollo de landing" en USD 0 pendientes de completar o borrar
-
-**Dato de negocio:** Cloudflare Registrar (USD 10,46) cuesta la mitad que Hostinger
-(USD 20,19) para un `.com`. Hay 5 `.com` en Hostinger migrables al vencer.
+- 9 clientes, 9 proyectos (Fotolink propio), ~40 activos, 5 proveedores, 7 métodos de pago
+- Aporte de Cristian: **USD 4.865**. Resultado acumulado −4.865. Sin excedente.
+- Gastos fijos USD 298/mes; ingreso comprometido 0; proyectado 53/mes.
+- 2 colaboradores (socios) sin tarifa definida. 0 asignaciones.
+- 0 alertas abiertas; primer vencimiento 22/01/2027.
 
 ## 10. Roadmap
 
-### Hecho
-Etapas 0, 1, 3, 5, 6 del plan original, más: proveedores con condiciones, costeo neto,
-conectores API, búsqueda, anti-duplicados, responsive, eje de ingresos completo
-(catálogo, cargos, anualidades ancladas, doble estado confirmación/cobro), finanzas de
-empresa con métodos de pago y categorías, desglose línea por línea, proyectos propios.
+### Hecho en esta sesión
+Eje de ingresos completo, finanzas de empresa, métodos de pago con titularidad, socios
+y cascada, activos del cliente, causa de gasto, marca, BRL, libro de movimientos con
+drill-down, dashboard ejecutivo, vista por cliente, Ficha 360 con importación y sync
+desde GitHub, gasto del cliente, colaboradores y horas, edición/archivado de proyectos.
 
 ### Pendiente
-- **Ficha Técnica 360** (Etapa 2): tabla existe, falta UI. Pilar de memoria.
-- Notificación por email de alertas
-- Refresco WHOIS para los 18 dominios `.uy`
-- Conector Google Workspace vía Admin SDK (conteo de licencias)
-- Pantalla consolidada por cliente (`client_line_items` ya existe)
-- Pantalla de usuarios y roles
-- Etapas 7, 8, 9: automatizaciones, capa de IA, dashboard ejecutivo
+Ver `.agent/NOTES.md`, sección 2026-09-07 cierre.
 
 ## 11. Identidad visual
 
-Tokens de `latamnova.app` en `src/app/globals.css`. **No inventar colores.**
+Tokens de `latamnova.app` en `globals.css`. Violeta = negativo/riesgo, cyan = positivo.
+Verbos: egreso se **paga**, ingreso se **cobra**. Importes entre paréntesis = referencia,
+no suman.
 
-```
---ink #05070f   --ink-2 #0a0e1e   --ink-3 #10162e
---accent #35e6d4 (cyan)   --violet #7b6cff
---cream #eaf0ff   --muted #93a0c2
-Display: Space Grotesk · Body: Inter · Radio: 18px
-```
-
-Convenciones: tarjetas `rounded-[18px] border-line bg-ink-2`, formulario de alta en
-columna derecha, chips de filtro redondeados, violeta para lo negativo o riesgoso, cyan
-para lo positivo. Verbos según dirección: un egreso se **paga**, un ingreso se **cobra**.
-
-Nav lateral fija en escritorio; bajo `lg` es barra superior con menú desplegable. Tablas
-con `overflow-x-auto` y ancho mínimo; columnas secundarias ocultas en móvil.
-
-## 12. Comandos habituales
+## 12. Comandos
 
 ```bash
-npm run dev
-npm run build                      # verificar antes de commitear
-
-npx supabase migration new <nombre>
-npx supabase db push
-npx supabase db query --linked --file <archivo.sql>
-
-git push                           # deploy automático
-npx -y vercel logs <url>           # errores de runtime
-
-npm run agent:status               # ¿hay otro agente trabajando?
+npm run dev · npm run build · npx tsc --noEmit · npx eslint "src/**/*.{ts,tsx}"
+npx supabase migration new <n> · npx supabase db push
+npx supabase db query --linked --file <f.sql>
+npm run agent:status
 ```
-
-**Regla:** todo cambio de esquema es una migración versionada. Nunca desde el dashboard.

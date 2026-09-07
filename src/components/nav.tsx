@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const NAV = [
   { href: "/", label: "Dashboard" },
@@ -25,8 +25,13 @@ export function Nav({ email, logout }: { email: string; logout: () => Promise<vo
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Cerrar el menú al navegar
-  useEffect(() => setOpen(false), [pathname]);
+  // Cerrar el menú al navegar: se compara la ruta durante el render en vez
+  // de sincronizar estado en un efecto, que es el patrón que React desaconseja.
+  const [seenPath, setSeenPath] = useState(pathname);
+  if (seenPath !== pathname) {
+    setSeenPath(pathname);
+    setOpen(false);
+  }
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);

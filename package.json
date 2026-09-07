@@ -10,7 +10,8 @@
     "agent:status": "node scripts/agent.mjs status",
     "agent:claim": "node scripts/agent.mjs claim",
     "agent:heartbeat": "node scripts/agent.mjs heartbeat",
-    "agent:release": "node scripts/agent.mjs release"
+    "agent:release": "node scripts/agent.mjs release",
+    "audit": "npx supabase db query --linked --file scripts/audit-coherence.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
