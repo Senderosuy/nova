@@ -15,6 +15,7 @@ import {
 import { AssetEditor } from "@/components/asset-editor";
 import { RevenuePanel } from "@/components/revenue-panel";
 import { CostBreakdown } from "@/components/cost-breakdown";
+import { ClientSpendPanel } from "@/components/client-spend-panel";
 import { InvestmentPanel } from "@/components/investment-panel";
 import { TechProfilePanel } from "@/components/tech-profile-panel";
 import { SubmitButton } from "@/components/submit-button";
@@ -41,7 +42,7 @@ export default async function ProyectoDetailPage({
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: takenAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: funding }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
+  const [{ data: project }, { data: assignments }, { data: allAssets }, { data: takenAssets }, { data: events }, { data: providers }, { data: clientList }, { data: costs }, { data: schedule }, { data: charges }, { data: catalog }, { data: techProfile }, { data: techStatus }, { data: spendGroups }, { data: spendItems }, { data: funding }, { data: investment }, { data: payMethods }, { data: lineItems }, { data: margins }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -100,6 +101,8 @@ export default async function ProyectoDetailPage({
         .select("completeness_pct,filled_fields,total_fields,days_since_review")
         .eq("project_id", id)
         .maybeSingle(),
+      supabase.from("client_spend_by_provider").select("*").eq("project_id", id),
+      supabase.from("client_spend_items").select("*").eq("project_id", id),
       supabase
         .from("project_funding")
         .select("partner_name,usd")
@@ -352,6 +355,15 @@ export default async function ProyectoDetailPage({
           <div className="mb-6">
             <CostBreakdown items={(lineItems ?? []) as never} />
           </div>
+
+          {(spendGroups ?? []).length > 0 && (
+            <div className="mb-6">
+              <ClientSpendPanel
+                groups={(spendGroups ?? []) as never}
+                items={(spendItems ?? []) as never}
+              />
+            </div>
+          )}
 
           <div className="mb-6">
             <RevenuePanel
