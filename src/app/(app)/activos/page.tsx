@@ -38,9 +38,9 @@ function ExpiryBadge({ expires }: { expires: string | null }) {
 export default async function ActivosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; ver?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, ver } = await searchParams;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
@@ -86,6 +86,18 @@ export default async function ActivosPage({
   );
   const unlabeled = orphans.filter((a) => !a.cost_reason);
 
+  // Vistas rápidas sobre el mismo listado, sin salir de la pantalla
+  const shown =
+    ver === "sin-causa"
+      ? unlabeled
+      : ver === "nova"
+        ? filtered.filter((a) => !projectOf.get(a.id) && a.ownership === "nova")
+        : ver === "cliente"
+          ? filtered.filter((a) => a.ownership === "cliente")
+          : ver === "sin-proyecto"
+            ? filtered.filter((a) => !projectOf.get(a.id))
+            : filtered;
+
   return (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -105,15 +117,55 @@ export default async function ActivosPage({
       </div>
 
       {unlabeled.length > 0 && (
-        <p className="mt-4 rounded-lg border border-violet/40 bg-violet/10 px-4 py-2 text-sm text-violet">
+        <Link
+          href="/activos?ver=sin-causa"
+          className="mt-4 block rounded-lg border border-violet/40 bg-violet/10 px-4 py-2 text-sm text-violet hover:bg-violet/20"
+        >
           {unlabeled.length} activo{unlabeled.length === 1 ? "" : "s"} sin proyecto ni causa
           declarada. Su costo lo cubre Nova: definí por qué se paga en cada uno.
-        </p>
+        </Link>
       )}
 
       <div className="mt-4">
         <SearchInput placeholder="Buscar activo, proveedor, tipo…" />
       </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {[
+          { k: undefined, label: `Todos (${filtered.length})` },
+          { k: "sin-causa", label: `Sin causa (${unlabeled.length})` },
+          {
+            k: "sin-proyecto",
+            label: `Sin proyecto (${filtered.filter((a) => !projectOf.get(a.id)).length})`,
+          },
+          {
+            k: "cliente",
+            label: `Del cliente (${filtered.filter((a) => a.ownership === "cliente").length})`,
+          },
+        ].map((opt) => {
+          const active = ver === opt.k || (!ver && !opt.k);
+          const params = new URLSearchParams();
+          if (q) params.set("q", q);
+          if (opt.k) params.set("ver", opt.k);
+          const href = params.toString() ? `/activos?${params}` : "/activos";
+          return (
+            <Link
+              key={opt.label}
+              href={href}
+              className={
+                active
+                  ? "rounded-full bg-accent-dim px-3 py-1 text-xs text-accent"
+                  : opt.k === "sin-causa" && unlabeled.length > 0
+                    ? "rounded-full border border-violet/40 px-3 py-1 text-xs text-violet hover:bg-violet/10"
+                    : "rounded-full border border-line-2 px-3 py-1 text-xs text-muted hover:text-cream"
+              }
+            >
+              {opt.label}
+            </Link>
+          );
+        })}
+      </div>
+
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
         <div className="overflow-x-auto rounded-[18px] border border-line bg-ink-2">
@@ -130,7 +182,7 @@ export default async function ActivosPage({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((a) => (
+              {shown.map((a) => (
                 <tr key={a.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">{a.name}</td>
                   <td className="hidden px-4 py-3 text-muted sm:table-cell">{a.type}</td>
@@ -178,7 +230,7 @@ export default async function ActivosPage({
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {shown.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted">
                     Sin activos. Sincronizá Hostinger o cargá uno manual.
